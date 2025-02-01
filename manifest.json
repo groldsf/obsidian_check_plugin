@@ -1,11 +1,11 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
+	"id": "checkbox-sync-plugin",  
+	"name": "Checkbox Sync",  
 	"version": "1.0.0",
-	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"minAppVersion": "0.12.0",
+	"description": "Автоматически отмечает родительский чекбокс, если все дочерние выполнены, и снимает отметку в противном случае.",
+	"author": "Grol",
+	"authorUrl": "https://github.com/groldsf",
 	"isDesktopOnly": false
-}
+  }
+  
