@@ -3,7 +3,7 @@ name: Build and Release Obsidian Plugin
 on:
   push:
     branches:
-      - master  # Запуск при пуше в мастер
+      - master  # Запуск при пуше в master
 
 jobs:
   build:
@@ -32,7 +32,7 @@ jobs:
           zip -r obsidian-plugin.zip ./*
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4  # Обновлённая версия
+        uses: actions/upload-artifact@v4
         with:
           name: obsidian-plugin
           path: release/obsidian-plugin.zip
@@ -51,9 +51,19 @@ jobs:
           name: obsidian-plugin
           path: release
 
+      - name: Get version from manifest.json
+        id: get_version
+        run: echo "VERSION=$(jq -r .version manifest.json)" >> $GITHUB_ENV
+
+      - name: Create tag
+        run: |
+          git tag v${{ env.VERSION }}
+          git push origin v${{ env.VERSION }}
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: v${{ env.VERSION }}
           files: release/obsidian-plugin.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
