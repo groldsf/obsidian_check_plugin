@@ -1,0 +1,59 @@
+name: Build and Release Obsidian Plugin
+
+on:
+  push:
+    branches:
+      - master  # Запуск при пуше в мастер
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build plugin
+        run: npm run build
+
+      - name: Create release ZIP
+        run: |
+          mkdir release
+          cp main.js manifest.json styles.css release/
+          cd release
+          zip -r obsidian-plugin.zip ./*
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: obsidian-plugin
+          path: release/obsidian-plugin.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Download built artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: obsidian-plugin
+          path: release
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/obsidian-plugin.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
