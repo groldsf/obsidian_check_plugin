@@ -24,12 +24,10 @@ jobs:
       - name: Build plugin
         run: npm run build
 
-      - name: Create release ZIP
+      - name: Create release
         run: |
           mkdir release
           cp main.js manifest.json styles.css release/
-          cd release
-          zip -r obsidian-plugin.zip ./*
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
