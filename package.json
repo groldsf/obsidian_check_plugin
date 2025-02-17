@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "checkbox-sync",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "Automatically checks the parent checkbox if all child checkboxes are completed, and unchecks it otherwise",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
