@@ -11,8 +11,6 @@ export default class CheckboxSyncPlugin extends Plugin {
 
   updateParentCheckboxes(editor: Editor) {
     const lines = editor.getValue().split("\n");
-    const scrollInfo = editor.getScrollInfo();
-    const cursor = editor.getCursor();
     let updates: { line: number; ch: number; value: string }[] = [];
 
     for (let i = lines.length - 1; i >= 0; i--) {
@@ -43,20 +41,12 @@ export default class CheckboxSyncPlugin extends Plugin {
       }
     }
 
-    // Если есть изменения, используем transaction()
+    // Применяем изменения через replaceRange()
     if (updates.length > 0) {
-      // Создаем объект транзакции для применения изменений
-      const transaction = {
-        changes: updates.map(({ line, ch, value }) => ({
-          from: { line, ch },
-          to: { line, ch: ch + 1 },
-          text: value, // Используем 'text' вместо 'insert'
-        })),
-      };
       editor.blur();
-      editor.setCursor(updates[0].line, updates[0].ch)
-      // Применяем изменения в транзакции
-      editor.transaction(transaction);      
+      updates.forEach(({ line, ch, value }) => {
+        editor.replaceRange(value, { line, ch }, { line, ch: ch + 1 });
+      });
     }
   }
 }
