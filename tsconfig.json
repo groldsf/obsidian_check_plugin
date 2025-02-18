@@ -16,9 +16,15 @@
       "ES5",
       "ES6",
       "ES7"
-    ]
+    ],
+    "esModuleInterop": true,
+    // "rootDir": "src", // Указываем, где исходный код
+    // "outDir": "dist", // Куда компилировать
+    "resolveJsonModule": true  // Поддержка импорта JSON файлов
   },
   "include": [
-    "**/*.ts"
+    "**/*.ts",
+    "src/**/*.ts",  // Включаем только исходники из папки src
+    "__tests__/**/*.ts"  // Включаем тесты из папки __tests__
   ]
 }
