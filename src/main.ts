@@ -8,12 +8,18 @@ export default class CheckboxSyncPlugin extends Plugin {
     this.registerEvent(
       this.app.workspace.on("editor-change", (editor) => {
         const updates = syncCheckboxes(editor.getValue());
-        if (updates.length > 0) {
-          editor.blur();
-          updates.forEach(({ line, ch, value }) => {
-            editor.replaceRange(value, { line, ch }, { line, ch: ch + 1 });
-          });
-        }
+        if (updates.length === 0) return;
+
+        const firstUpdateLine = updates[0].line;
+        // Перемещаем курсор на строку первого изменения (символ 0)
+        editor.setCursor({ line: firstUpdateLine, ch: editor.getLine(firstUpdateLine).length });
+        // Делаем курсор невидимым
+        editor.blur();
+
+        // Выполняем обновления текста
+        updates.forEach(({ line, ch, value }) => {
+          editor.replaceRange(value, { line, ch }, { line, ch: ch + 1 });
+        });
       })
     );
     this.registerEvent(
