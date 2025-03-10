@@ -18,6 +18,7 @@
 After activating the plugin, it automatically tracks checkboxes in your notes. Example usage:
 
 ![](https://raw.githubusercontent.com/groldsf/obsidian_check_plugin/refs/heads/master/img/showcase.gif)
+
 In this example, as soon as both child checkboxes are checked, the plugin will automatically check the parent checkbox. If at least one child checkbox is unchecked, the parent will be unchecked.
 ### Installation
 
