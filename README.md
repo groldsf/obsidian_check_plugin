@@ -16,6 +16,7 @@
 ### Usage
 
 After activating the plugin, it automatically tracks checkboxes in your notes. Example usage:
+
 ![](https://raw.githubusercontent.com/groldsf/obsidian_check_plugin/refs/heads/master/img/showcase.gif)
 In this example, as soon as both child checkboxes are checked, the plugin will automatically check the parent checkbox. If at least one child checkbox is unchecked, the parent will be unchecked.
 ### Installation
@@ -68,6 +69,7 @@ If you have any questions, suggestions, or find a bug, please [create an issue](
 ### Использование
 
 После активации плагина, он автоматически отслеживает чекбоксы в ваших заметках. Пример использования:
+
 ![](https://raw.githubusercontent.com/groldsf/obsidian_check_plugin/refs/heads/master/img/showcase.gif)
 
 В данном примере, как только оба дочерних чекбокса будут отмечены, плагин автоматически отметит родительский чекбокс. Если хотя бы один дочерний чекбокс не отмечен, родительский сбросится.
@@ -77,7 +79,7 @@ If you have any questions, suggestions, or find a bug, please [create an issue](
 
 1. Перейдите на [страницу релизов](https://github.com/groldsf/obsidian_check_plugin/releases) и скачайте последний архив плагина.
 2. Распакуйте архив в директорию:  
-   `<ваше-хранилище>/.obsidian/plugins/obsidian_check_plugin`
+   `<ваше-хранилище>/.obsidian/plugins/checkbox-sync`
 3. Перезапустите Obsidian.
 4. Откройте **Настройки → Плагины сообщества** и активируйте **Checkbox Sync**.
 
