@@ -25,12 +25,24 @@ jobs:
           TITLE="${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}"
           URL="${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }}"
 
-          SAFE_TITLE=$(echo "$TITLE" | sed 's/`/\\`/g' | sed 's/(/\\(/g' | sed 's/)/\\)/g')
+          escape_markdown_v2() {
+            echo "$1" | sed -e 's/[_*\[\]()~`>#+\-=|{}.!]/\\&/g'
+          }
 
-          TEXT="*Событие в ${REPO}*\nТип: \`${EVENT_TYPE}\`\nДействие: \`${ACTION}\`\nЗаголовок: \`${SAFE_TITLE}\`\n[Открыть](${URL})"
+          SAFE_REPO=$(escape_markdown_v2 "$REPO")
+          SAFE_EVENT=$(escape_markdown_v2 "$EVENT_TYPE")
+          SAFE_ACTION=$(escape_markdown_v2 "$ACTION")
+          SAFE_TITLE=$(escape_markdown_v2 "$TITLE")
+          SAFE_URL=$(escape_markdown_v2 "$URL")
+
+          TEXT="*Событие в ${SAFE_REPO}*
+Тип: \`${SAFE_EVENT}\`
+Действие: \`${SAFE_ACTION}\`
+Заголовок: \`${SAFE_TITLE}\`
+[Открыть](${SAFE_URL})"
 
           curl -s -X POST \
             https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage \
             -d chat_id="${TELEGRAM_CHAT_ID}" \
-            -d parse_mode=Markdown \
+            -d parse_mode=MarkdownV2 \
             -d text="${TEXT}"
