@@ -1,0 +1,26 @@
+name: Notify Telegram on Issues and Pull Requests
+
+on:
+  issues:
+    types: [opened, edited, reopened] # События для issue
+  pull_request:
+    types: [opened, edited, reopened, review_requested, ready_for_review, synchronize] # События для PR
+  issue_comment:
+    types: [created] # Новые комментарии к issue или PR
+  pull_request_review:
+    types: [submitted] # Новые ревью (включает комментарии в diff)
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram Notification
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          curl -s -X POST \
+            https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage \
+            -d chat_id=${TELEGRAM_CHAT_ID} \
+            -d parse_mode=Markdown \
+            -d text="Событие в *${{ github.repository }}*:\nТип: ${{ github.event_name }}\nДействие: ${{ github.event.action }}\nЗаголовок: ${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}\n[Открыть](${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }))"
