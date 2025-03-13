@@ -25,5 +25,5 @@ jobs:
             Type: ${{ github.event_name }}
             Action: ${{ github.event.action }}
             Titile: ${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}
-
+            ${{github.event.comment.body || ''}}
             See ${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }}
