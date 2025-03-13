@@ -11,22 +11,19 @@ on:
     types: [submitted]
 
 jobs:
-  notify:
+  build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
-      - name: Send Telegram Notification
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          REPO="${{ github.repository }}"
-          EVENT_TYPE="${{ github.event_name }}"
-          ACTION="${{ github.event.action }}"
-          TITLE="${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}"
-          URL="${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }}"
-          TEXT="<b>Событие в ${REPO}</b>\nТип: <code>${EVENT_TYPE}</code>\nДействие: <code>${ACTION}</code>\nЗаголовок: <code>${TITLE}</code>\n<a href=\"${URL}\">Открыть</a>"
-          curl -s -X POST \
-            https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage \
-            -d chat_id=${TELEGRAM_CHAT_ID} \
-            -d parse_mode=HTML \
-            -d "text=${TEXT}"
+      - name: send telegram message on push
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |            
+            Repository: ${{ github.repository }}
+            Type: ${{ github.event_name }}
+            Action: ${{ github.event.action }}
+            Titile: ${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}
+
+            See ${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }}
