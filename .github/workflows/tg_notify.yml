@@ -19,7 +19,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
-          MESSAGE="Событие в *${{ github.repository }}*:\nТип: ${{ github.event_name }}\nДействие: ${{ github.event.action }}\nЗаголовок: ${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}\n[Открыть](${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }})"
+          MESSAGE="Событие в *${{ github.repository }}* :\nТип: ${{ github.event_name }}\nДействие: ${{ github.event.action }}\nЗаголовок: ${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}\n[Открыть](${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }})"
           curl -s -X POST \
             https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage \
             -d chat_id=${TELEGRAM_CHAT_ID} \
