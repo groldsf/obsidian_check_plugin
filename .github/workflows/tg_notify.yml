@@ -2,13 +2,13 @@ name: Notify Telegram on Issues and Pull Requests
 
 on:
   issues:
-    types: [opened, edited, reopened] # События для issue
+    types: [opened, edited, reopened]
   pull_request:
-    types: [opened, edited, reopened, review_requested, ready_for_review, synchronize] # События для PR
+    types: [opened, edited, reopened, review_requested, ready_for_review, synchronize]
   issue_comment:
-    types: [created] # Новые комментарии к issue или PR
+    types: [created]
   pull_request_review:
-    types: [submitted] # Новые ревью (включает комментарии в diff)
+    types: [submitted]
 
 jobs:
   notify:
@@ -19,8 +19,19 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
+          REPO="${{ github.repository }}"
+          EVENT_TYPE="${{ github.event_name }}"
+          ACTION="${{ github.event.action }}"
+          TITLE="${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}"
+          URL="${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }}"
+
+          # Escape backticks and parentheses for Markdown
+          SAFE_TITLE=$(echo "$TITLE" | sed 's/`/\\`/g' | sed 's/(/\\(/g' | sed 's/)/\\)/g')
+
+          TEXT="*Событие в ${REPO}*\nТип: \`${EVENT_TYPE}\`\nДействие: \`${ACTION}\`\nЗаголовок: \`${SAFE_TITLE}\`\n[Открыть](${URL})"
+
           curl -s -X POST \
             https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage \
-            -d chat_id=${TELEGRAM_CHAT_ID} \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
             -d parse_mode=Markdown \
-            -d text="Событие в *${{ github.repository }}*:\nТип: ${{ github.event_name }}\nДействие: ${{ github.event.action }}\nЗаголовок: ${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}\n[Открыть](${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }})"
+            --data-urlencode text="${TEXT}"
