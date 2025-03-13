@@ -1,31 +1,48 @@
-run: |
-  REPO="${{ github.repository }}"
-  EVENT_TYPE="${{ github.event_name }}"
-  ACTION="${{ github.event.action }}"
-  TITLE="${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}"
-  URL="${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }}"
+name: Notify Telegram on Issues and Pull Requests
 
-  escape_markdown_v2() {
-    echo "$1" | sed -e 's/[_*\[\]()~`>#+\-=|{}.!]/\\&/g'
-  }
+on:
+  issues:
+    types: [opened, edited, reopened]
+  pull_request:
+    types: [opened, edited, reopened, review_requested, ready_for_review, synchronize]
+  issue_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
 
-  SAFE_REPO=$(escape_markdown_v2 "$REPO")
-  SAFE_EVENT=$(escape_markdown_v2 "$EVENT_TYPE")
-  SAFE_ACTION=$(escape_markdown_v2 "$ACTION")
-  SAFE_TITLE=$(escape_markdown_v2 "$TITLE")
-  SAFE_URL=$(escape_markdown_v2 "$URL")
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram Notification
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          REPO="${{ github.repository }}"
+          EVENT_TYPE="${{ github.event_name }}"
+          ACTION="${{ github.event.action }}"
+          TITLE="${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}"
+          URL="${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }}"
 
-  TEXT=$(cat <<EOF
-*Событие в ${SAFE_REPO}*
+          escape_markdown_v2() {
+            echo "$1" | sed -e 's/[_*\[\]()~`>#+\-=|{}.!]/\\&/g'
+          }
+
+          SAFE_REPO=$(escape_markdown_v2 "$REPO")
+          SAFE_EVENT=$(escape_markdown_v2 "$EVENT_TYPE")
+          SAFE_ACTION=$(escape_markdown_v2 "$ACTION")
+          SAFE_TITLE=$(escape_markdown_v2 "$TITLE")
+          SAFE_URL=$(escape_markdown_v2 "$URL")
+
+          TEXT="*Событие в ${SAFE_REPO}*
 Тип: \`${SAFE_EVENT}\`
 Действие: \`${SAFE_ACTION}\`
 Заголовок: \`${SAFE_TITLE}\`
-[Открыть](${SAFE_URL})
-EOF
-  )
+[Открыть](${SAFE_URL})"
 
-  curl -s -X POST \
-    https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage \
-    -d chat_id="${TELEGRAM_CHAT_ID}" \
-    -d parse_mode=MarkdownV2 \
-    -d text="${TEXT}"
+          curl -s -X POST \
+            https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage \
+            -d chat_id="${TELEGRAM_CHAT_ID}" \
+            -d parse_mode=MarkdownV2 \
+            -d text="${TEXT}"
