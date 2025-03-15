@@ -13,6 +13,21 @@
 
 **Checkbox Sync** is a plugin for [Obsidian](https://obsidian.md/) that automates the management of checkbox states in your notes. If all child checkboxes are checked, the plugin automatically checks the parent checkbox, and if at least one of them is unchecked, it unchecks the parent.
 
+### Supported Lists
+
+The plugin works with both ordered and unordered lists:
+
+- **Unordered Lists** - Lists created with `-`, `+` or `*` markers
+- **Ordered Lists** - Numbered lists (1., 2., etc.)
+
+The plugin respects list indentation, allowing for nested checkbox hierarchies at any level.
+
+### Settings
+
+The plugin offers the following configuration options:
+
+- **X-Only Mode** - When enabled, only checkboxes marked with 'x' are considered checked. When disabled, any character inside the checkbox (except space) marks it as checked.
+
 ### Usage
 
 After activating the plugin, it automatically tracks checkboxes in your notes. Example usage:
@@ -67,6 +82,22 @@ If you have any questions, suggestions, or find a bug, please [create an issue](
 ### Описание
 
 **Checkbox Sync** — это плагин для [Obsidian](https://obsidian.md/), который автоматизирует управление состоянием чекбоксов в ваших заметках. Если все дочерние чекбоксы выполнены, плагин автоматически отмечает родительский чекбокс, а если хотя бы один из них не отмечен — снимает отметку с родительского.
+
+### Поддерживаемые списки
+
+Плагин работает как с нумерованными, так и с ненумерованными списками:
+
+- **Ненумерованные списки** - Списки, созданные с помощью маркеров `-`, `+` или `*`
+- **Нумерованные списки** - Списки с цифровой нумерацией (1., 2. и т.д.)
+
+Плагин учитывает отступы списков, позволяя создавать вложенные иерархии чекбоксов на любом уровне.
+
+### Настройки
+
+Плагин предлагает следующие параметры конфигурации:
+
+- **Режим X-Only** - Когда включен, только чекбоксы, отмеченные символом 'x', считаются выполненными. Когда отключен, любой символ внутри чекбокса (кроме пробела) считается отметкой о выполнении.
+
 ### Использование
 
 После активации плагина, он автоматически отслеживает чекбоксы в ваших заметках. Пример использования:
