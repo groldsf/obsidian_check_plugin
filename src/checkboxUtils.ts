@@ -2,9 +2,12 @@
  * Функция для поиска строк с чекбоксами в формате Markdown.
  */
 export function findCheckboxesLine(line: string): RegExpMatchArray | null {
-	return line.match(/^(\s*)([*+-]|\d+\.) \[([ x-])\] /);
+	return line.match(/^(\s*)([*+-]|\d+\.) \[(.)\] /);
 }
 
+export function isCheckedSymbol(text: string): boolean {
+	return text === "x";
+}
 /**
  * Возвращает список изменений (позиции и новые значения), но не модифицирует текст напрямую.
  */
@@ -17,7 +20,7 @@ export function syncCheckboxes(text: string): { line: number; ch: number; value:
 		if (!match) continue;
 
 		const indent = match[1].length;
-		const isChecked = match[3] === "x";
+		const isChecked = isCheckedSymbol(match[3]);
 		let allChildrenChecked = true;
 		let hasChildren = false;
 		let j = i + 1;
@@ -26,7 +29,11 @@ export function syncCheckboxes(text: string): { line: number; ch: number; value:
 			const childMatch = findCheckboxesLine(lines[j]);
 			if (!childMatch || childMatch[1].length <= indent) break;
 			hasChildren = true;
-			if (childMatch[3] !== "x") allChildrenChecked = false;
+			const childrenIsChecked = isCheckedSymbol(childMatch[3]);
+			if (!childrenIsChecked) {
+				allChildrenChecked = false;
+				break;
+			}
 			j++;
 		}
 

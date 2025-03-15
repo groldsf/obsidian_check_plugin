@@ -11,18 +11,46 @@ describe("findCheckboxesLine", () => {
     expect(findCheckboxesLine("1. [x] Numbered task")).not.toBeNull();
   });
 
+  test("корректно обрабатывает разные состояния чекбокса", () => {
+    const states = [" ", "x", "-", "?", "!", "*", "#", "@", "[", "]", "y", "X", "Y"];
+    
+    for (const state of states) {
+      const match = findCheckboxesLine(`- [${state}] Task`);
+      expect(match).not.toBeNull();
+      expect(match![3]).toBe(state);
+    }
+  });
+
+  test("корректно обрабатывает отступы", () => {
+    const noIndentMatch = findCheckboxesLine("- [ ] Task");
+    expect(noIndentMatch).not.toBeNull();
+    expect(noIndentMatch![1]).toBe("");
+
+    const singleSpaceMatch = findCheckboxesLine(" - [ ] Task");
+    expect(singleSpaceMatch).not.toBeNull();
+    expect(singleSpaceMatch![1]).toBe(" ");
+
+    const multiSpaceMatch = findCheckboxesLine("    - [ ] Task");
+    expect(multiSpaceMatch).not.toBeNull();
+    expect(multiSpaceMatch![1]).toBe("    ");
+
+    const tabMatch = findCheckboxesLine("\t- [ ] Task");
+    expect(tabMatch).not.toBeNull();
+    expect(tabMatch![1]).toBe("\t");
+  });
+
   test("игнорирует некорректные строки", () => {
     // Отсутствует пробел после маркера списка
     expect(findCheckboxesLine("-[ ] Task")).toBeNull();
     expect(findCheckboxesLine("*[x] Task")).toBeNull();
     expect(findCheckboxesLine("1.[ ] Numbered task")).toBeNull();
-    // Неверное содержимое скобок или неверный регистр
+    // Пустые скобки недопустимы
     expect(findCheckboxesLine("- [] Task")).toBeNull();
-    expect(findCheckboxesLine("- [X] Task")).toBeNull();
     // Не соответствует шаблону чекбокса
     expect(findCheckboxesLine("  - Task")).toBeNull();
     expect(findCheckboxesLine("Just some text")).toBeNull();
     expect(findCheckboxesLine("1. Some numbered task")).toBeNull();
+    expect(findCheckboxesLine("")).toBeNull();
   });
 });
 
