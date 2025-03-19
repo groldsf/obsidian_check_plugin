@@ -2,7 +2,7 @@ import { Plugin, TFile } from "obsidian";
 import { CheckboxUtils } from "./checkboxUtils";
 import { CheckboxSyncPluginSettingTab } from "./CheckboxSyncPluginSettingTab";
 import { CheckboxSyncPluginSettings } from "./types";
-import CheckboxManager from "./CheckboxManager";
+import SyncController from "./SyncController";
 
 const DEFAULT_SETTINGS: CheckboxSyncPluginSettings = {
   xOnlyMode: true,
@@ -11,28 +11,28 @@ const DEFAULT_SETTINGS: CheckboxSyncPluginSettings = {
 export default class CheckboxSyncPlugin extends Plugin {
   settings: CheckboxSyncPluginSettings;
 
-  checkboxManager: CheckboxManager;
+  syncController: SyncController;
   checkboxUtils: CheckboxUtils;
 
   async onload() {
     await this.loadSettings();
 
     this.checkboxUtils = new CheckboxUtils(this.settings);
-    this.checkboxManager = new CheckboxManager(this);
+    this.syncController = new SyncController(this);
 
     this.addSettingTab(new CheckboxSyncPluginSettingTab(this.app, this));
 
     //запуск плагина при открытии файла
     this.registerEvent(
-      this.app.workspace.on("file-open", async (file) => await this.checkboxManager.syncFile(file))
+      this.app.workspace.on("file-open", async (file) => await this.syncController.syncFile(file))
     );
     //запуск плагина при модификации файла(для обработки в режиме просмотра)
     this.registerEvent(
-      this.app.vault.on("modify", async (file) => await this.checkboxManager.syncFile(file))
+      this.app.vault.on("modify", async (file: TFile) => await this.syncController.syncFile(file))
     );
     //запуск плагина при изменении в режиме редактора
     this.registerEvent(
-      this.app.workspace.on("editor-change", async (editor) => await this.checkboxManager.syncEditor(editor))
+      this.app.workspace.on("editor-change", async (editor) => await this.syncController.syncEditor(editor))
     );
 
   }
@@ -45,6 +45,6 @@ export default class CheckboxSyncPlugin extends Plugin {
     await this.saveData(this.settings);
     this.checkboxUtils.updateSettings(this.settings);
     const activeFile = this.app.workspace.getActiveFile();
-    await this.checkboxManager.syncFile(activeFile);
+    await this.syncController.syncFile(activeFile);
   }
 }

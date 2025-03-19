@@ -1,7 +1,7 @@
 import { CheckboxSyncPluginSettings } from "./types";
 
 export class CheckboxUtils {
-  constructor(private settings: CheckboxSyncPluginSettings) {}
+  constructor(private settings: CheckboxSyncPluginSettings) { }
 
   updateSettings(settings: CheckboxSyncPluginSettings) {
     this.settings = settings;
@@ -15,9 +15,8 @@ export class CheckboxUtils {
     return this.settings.xOnlyMode ? text === "x" : text !== " ";
   }
 
-  syncCheckboxes(text: string): { line: number; ch: number; value: string }[] {
+  syncCheckboxes(text: string): string{
     const lines = text.split("\n");
-    let updates: { line: number; ch: number; value: string }[] = [];
 
     for (let i = lines.length - 1; i >= 0; i--) {
       const match = this.findCheckboxesLine(lines[i]);
@@ -44,13 +43,12 @@ export class CheckboxUtils {
       if (hasChildren) {
         const checkboxPos = match[1].length + match[2].length + 2;
         if (allChildrenChecked && !isChecked) {
-          updates.push({ line: i, ch: checkboxPos, value: "x" });
+          lines[i] = lines[i].substring(0, checkboxPos) + "x" + lines[i].substring(checkboxPos + 1);
         } else if (!allChildrenChecked && isChecked) {
-          updates.push({ line: i, ch: checkboxPos, value: " " });
+          lines[i] = lines[i].substring(0, checkboxPos) + " " + lines[i].substring(checkboxPos + 1);
         }
       }
     }
-
-    return updates;
+    return lines.join("\n");
   }
 }
