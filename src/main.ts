@@ -24,15 +24,15 @@ export default class CheckboxSyncPlugin extends Plugin {
 
     //запуск плагина при открытии файла
     this.registerEvent(
-      this.app.workspace.on("file-open", async (file) => await this.syncController.syncFile(file))
+      this.app.workspace.on("file-open", this.syncController.syncFile.bind(this.syncController))
     );
     //запуск плагина при модификации файла(для обработки в режиме просмотра)
     this.registerEvent(
-      this.app.vault.on("modify", async (file: TFile) => await this.syncController.syncFile(file))
+      this.app.vault.on("modify", this.syncController.syncFile.bind(this.syncController))
     );
     //запуск плагина при изменении в режиме редактора
     this.registerEvent(
-      this.app.workspace.on("editor-change", async (editor) => await this.syncController.syncEditor(editor))
+      this.app.workspace.on("editor-change", this.syncController.syncEditor.bind(this.syncController))
     );
 
   }
