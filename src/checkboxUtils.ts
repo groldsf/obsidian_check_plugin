@@ -15,8 +15,8 @@ export class CheckboxUtils {
     return this.settings.xOnlyMode ? text === "x" : text !== " ";
   }
 
-  syncCheckboxesAfterClick(text: string, line: number): string {
-    console.log("syncCheckboxesAfterClick");
+  syncCheckboxesAfterDifferentLine(text: string, line: number): string {
+    console.log("syncCheckboxesAfterDifferentLine");
 
     const lines = text.split("\n");
 

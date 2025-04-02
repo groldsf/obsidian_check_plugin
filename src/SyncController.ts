@@ -21,16 +21,32 @@ export default class SyncController {
 
   async syncEditor(editor: Editor) {
     await this.mutex.runExclusive(() => {
+      console.log(`syncEditor start`);
       const text = editor.getValue()
-      const newText = this.plugin.checkboxUtils.syncCheckboxes(text);
-      if (newText === text) return;
-
-      const cursor = editor.getCursor();
-
+      const testText = this.plugin.checkboxUtils.syncCheckboxes(text);
+      if (testText === text) { 
+        console.log(`syncEditor stop, text == testText`);
+        return; 
+      }
+      let newText = text;
       editor.undo();
       const textBefore = editor.getValue();
       editor.redo();
-      const lastDifferentLineIndex = this.findFirstDifferentLineIndex(text, textBefore);
+      const diffs = this.findDifferentLineIndexes(text, textBefore);
+      for(const diffLineIndex of diffs.reverse()){
+        console.log(`diff line index ${diffLineIndex}`);
+        newText = this.plugin.checkboxUtils.syncCheckboxesAfterDifferentLine(newText, diffLineIndex);
+      }
+      console.log(`stop diff lines`, newText);
+
+      newText = this.plugin.checkboxUtils.syncCheckboxes(newText);
+      if (newText === text) { 
+        console.log(`syncEditor stop, text == newText`);
+        return; 
+      }
+
+      const cursor = editor.getCursor();
+      const lastDifferentLineIndex = diffs.length > 0 ? diffs[0] : -1;
 
       const newLines = newText.split("\n");
       const oldLines = text.split("\n");
@@ -45,15 +61,13 @@ export default class SyncController {
           }
         }
       }
-      editor.scrollIntoView({
-        from: { line: lastDifferentLineIndex, ch: 0 },
-        to: { line: lastDifferentLineIndex, ch: 0 }
-      });
-
-
-      // editor.setValue(newText);
-
-      // editor.setCursor(cursor);
+      if (lastDifferentLineIndex != -1) {
+        editor.scrollIntoView({
+          from: { line: lastDifferentLineIndex, ch: 0 },
+          to: { line: lastDifferentLineIndex, ch: 0 }
+        });
+      }
+      console.log(`syncEditor stop`, editor.getValue());
     });
   }
 
@@ -69,13 +83,13 @@ export default class SyncController {
         console.log(`contains events`);
         const events = this.clickEvents.get(file.path);
         this.clickEvents.delete(file.path);
-        for (const event of events!){
-          newText = this.plugin.checkboxUtils.syncCheckboxesAfterClick(newText, event.line);
+        for (const event of events!) {
+          newText = this.plugin.checkboxUtils.syncCheckboxesAfterDifferentLine(newText, event.line);
           console.log(`Text after syncCheckboxesAfterClick`);
           console.log(newText);
         }
       }
-      
+
       newText = this.plugin.checkboxUtils.syncCheckboxes(newText);
       if (newText === text) {
         return;
@@ -84,23 +98,25 @@ export default class SyncController {
     });
   }
 
-  private findFirstDifferentLineIndex(text1: string, text2: string): number {
+  private findDifferentLineIndexes(text1: string, text2: string): number[] {
     const lines1 = text1.split('\n');
     const lines2 = text2.split('\n');
     const minLength = Math.min(lines1.length, lines2.length);
 
+    const result: number[] = [];
+
     for (let i = 0; i < minLength; i++) {
       if (lines1[i] !== lines2[i]) {
-        return i;
+        result.push(i);
       }
     }
 
-    // Если все строки до minLength совпадают, проверяем на разницу в длине
     if (lines1.length !== lines2.length) {
-      return minLength;
+      for (let i = Math.min(lines1.length, lines2.length) + 1; i < Math.max(lines1.length, lines2.length); i++) {
+        result.push(i);
+      }
     }
 
-    // Если все строки совпадают
-    return -1;
+    return result;
   }
 }
