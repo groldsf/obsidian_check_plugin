@@ -15,7 +15,38 @@ export class CheckboxUtils {
     return this.settings.xOnlyMode ? text === "x" : text !== " ";
   }
 
-  syncCheckboxes(text: string): string{
+  syncCheckboxesAfterClick(text: string, line: number): string {
+    console.log("syncCheckboxesAfterClick");
+
+    const lines = text.split("\n");
+
+    const match = this.findCheckboxesLine(lines[line]);
+    if (!match) {
+      console.log(`checkbox not found in line ${line}`)
+      return text;
+    }
+
+    const indent = match[1].length;
+    const isChecked = this.isCheckedSymbol(match[3]);
+    console.log(`Target checkbox isChecked = ${isChecked}`);
+    let j = line + 1;
+
+    while (j < lines.length) {
+      const childMatch = this.findCheckboxesLine(lines[j]);
+      if (!childMatch || childMatch[1].length <= indent) break;
+      console.log(`Find children in lien ${j}`);
+      const checkboxPos = childMatch[1].length + childMatch[2].length + 2;
+      if (isChecked) {
+        lines[j] = lines[j].substring(0, checkboxPos) + "x" + lines[j].substring(checkboxPos + 1);
+      } else {
+        lines[j] = lines[j].substring(0, checkboxPos) + " " + lines[j].substring(checkboxPos + 1);
+      }
+      j++;
+    }
+    return lines.join("\n");
+  }
+
+  syncCheckboxes(text: string): string {
     const lines = text.split("\n");
 
     for (let i = lines.length - 1; i >= 0; i--) {

@@ -1,4 +1,4 @@
-import { Plugin, TFile } from "obsidian";
+import { MarkdownPostProcessorContext, Plugin, TFile } from "obsidian";
 import { CheckboxUtils } from "./checkboxUtils";
 import { CheckboxSyncPluginSettingTab } from "./CheckboxSyncPluginSettingTab";
 import { CheckboxSyncPluginSettings } from "./types";
@@ -34,6 +34,22 @@ export default class CheckboxSyncPlugin extends Plugin {
     this.registerEvent(
       this.app.workspace.on("editor-change", this.syncController.syncEditor.bind(this.syncController))
     );
+
+    this.registerMarkdownPostProcessor((el: HTMLElement, ctx: MarkdownPostProcessorContext) => {
+      const checkboxes = el.querySelectorAll('input[type="checkbox"].task-list-item-checkbox');
+      console.log(`find ${checkboxes.length} checkboxes`)
+      checkboxes.forEach((checkbox) => {
+        const line = checkbox.getAttribute('data-line');
+        checkbox.addEventListener('click', async (event) => {
+          const isChecked = (event.target as HTMLInputElement).checked;
+          console.log(`Checkbox changed in Reading Mode. Checked: ${isChecked}.`);
+          console.log(`Line: ${line}. DocId ${ctx.docId}. SourcePath ${ctx.sourcePath}.`);
+          this.syncController.addClickEvent({filePath: ctx.sourcePath, line: Number(line)});
+          
+          
+        }, { capture: true });
+      });
+    });
 
   }
 
