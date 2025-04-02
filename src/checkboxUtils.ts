@@ -28,13 +28,11 @@ export class CheckboxUtils {
 
     const indent = match[1].length;
     const isChecked = this.isCheckedSymbol(match[3]);
-    console.log(`Target checkbox isChecked = ${isChecked}`);
     let j = line + 1;
 
     while (j < lines.length) {
       const childMatch = this.findCheckboxesLine(lines[j]);
       if (!childMatch || childMatch[1].length <= indent) break;
-      console.log(`Find children in lien ${j}`);
       const checkboxPos = childMatch[1].length + childMatch[2].length + 2;
       if (isChecked) {
         lines[j] = lines[j].substring(0, checkboxPos) + "x" + lines[j].substring(checkboxPos + 1);
