@@ -1,22 +1,14 @@
+import { Mutex } from "async-mutex";
 import { Editor, EditorChange, MarkdownFileInfo, MarkdownView, TFile } from "obsidian";
 import CheckboxSyncPlugin from "./main";
-import { Mutex } from "async-mutex";
-import MultiMap from "./utils/MultiMap";
-import clickEvent from "./events/ClickEvent";
 
 export default class SyncController {
   private plugin: CheckboxSyncPlugin;
   private mutex: Mutex;
 
-  private clickEvents: MultiMap<string, clickEvent>;
   constructor(plugin: CheckboxSyncPlugin) {
     this.plugin = plugin;
     this.mutex = new Mutex();
-    this.clickEvents = new MultiMap();
-  }
-
-  addClickEvent(event: clickEvent) {
-    this.clickEvents.add(event.filePath, event);
   }
 
   async syncEditor(editor: Editor, info: MarkdownView | MarkdownFileInfo) {
