@@ -25,17 +25,13 @@ export default class CheckboxSyncPlugin extends Plugin {
 
     this.addSettingTab(new CheckboxSyncPluginSettingTab(this.app, this));
 
-    this.app.workspace.onLayoutReady(async () => {
-      this.updateActiveFiles();
-    });
-
     //запуск плагина при открытии файла
     this.registerEvent(
       this.app.workspace.on("file-open", async (file) => {
         if (file) {
           console.log(`file-open ${file.path}`);
           await this.fileStateHolder.update(file);
-          this.syncController.syncFile(file);
+          await this.syncController.syncFile(file);
         }
       })
     );
@@ -72,6 +68,10 @@ export default class CheckboxSyncPlugin extends Plugin {
       })
     );
 
+    this.app.workspace.onLayoutReady(async () => {
+      await this.updateActiveFiles();
+    });
+
   }
 
   async loadSettings() {
@@ -85,21 +85,15 @@ export default class CheckboxSyncPlugin extends Plugin {
   }
 
   async updateActiveFiles() {
-    // const activeFile = this.app.workspace.getActiveFile();
-    // if (!activeFile) return;
-    // await this.fileStateHolder.update(activeFile);
-    // await this.syncController.syncFile(activeFile);
-
     const markdownLeaves = this.app.workspace.getLeavesOfType('markdown');
     markdownLeaves.forEach(async (leaf: WorkspaceLeaf) => {
       const view = leaf.view as MarkdownView;
+      if (!view.file) return;
       console.log(`${view.file?.basename} mod ${view.getMode()}`)
       if (view.getMode() === 'preview') {
-        console.log(`rerender ${view.file?.basename}`);
+        console.log(`rerender ${view.file.basename}`);
         view.previewMode.rerender();
       } else {
-        // console.log(`refresh ${view.file?.basename}`);
-        // view.editor.refresh();
         const content = view.editor.getValue();
         const tempEl = document.createElement('div');
         await MarkdownRenderer.render(
@@ -110,6 +104,7 @@ export default class CheckboxSyncPlugin extends Plugin {
           this
         );
       }
+      await this.syncController.syncFile(view.file);
     });
   }
 }
