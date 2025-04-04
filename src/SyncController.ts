@@ -94,7 +94,7 @@ export default class SyncController {
       return;
     }
     await this.mutex.runExclusive(async () => {
-      console.log(`sync file ${Date.now()}`)
+      console.log(`sync file ${file.basename} date: ${Date.now()}`)
       let text = await this.plugin.app.vault.read(file);
       let textBefore = this.plugin.fileStateHolder.get(file);
       let newText = text;

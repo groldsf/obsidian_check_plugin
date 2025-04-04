@@ -93,6 +93,7 @@ export default class CheckboxSyncPlugin extends Plugin {
       if (view.getMode() === 'preview') {
         console.log(`rerender ${view.file.basename}`);
         view.previewMode.rerender();
+        await this.fileStateHolder.updateIfNeeded(view.file);
       } else {
         const content = view.editor.getValue();
         const tempEl = document.createElement('div');
