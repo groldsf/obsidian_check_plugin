@@ -1,39 +1,44 @@
 import { TFile } from "obsidian";
 import CheckboxSyncPlugin from "./main";
+import { Mutex } from "async-mutex";
 
 
 export default class FileStateHolder {
-    private map: Map<TFile, string>;
-    private plugin: CheckboxSyncPlugin;
+  private map: Map<TFile, string>;
+  private plugin: CheckboxSyncPlugin;
+  private mutex: Mutex;
 
-    constructor(plugin: CheckboxSyncPlugin) {
-        this.map = new Map();
-        this.plugin = plugin;
-    }
+  constructor(plugin: CheckboxSyncPlugin) {
+    this.map = new Map();
+    this.plugin = plugin;
+    this.mutex = new Mutex();
+  }
 
-    async init() {
-        const vault = this.plugin.app.vault;
-        const files = vault.getMarkdownFiles();
-        // Создаём массив промисов для чтения всех файлов
-        const readPromises = files.map(async (file) => {
-            const content = await vault.read(file);
-            this.add(file, content);
-        });
-        // Ждём завершения всех операций чтения
-        await Promise.all(readPromises);
-    }
+  async update(file: TFile) {
+    await this.mutex.runExclusive(async () => {
+      const text = await this.plugin.app.vault.read(file);
+      this.set(file, text);
+    });
+  }
+  async updateIfNeeded(file: TFile) {
+    await this.mutex.runExclusive(async () => {
+      if (!this.map.has(file)) {
+        const text = await this.plugin.app.vault.read(file);
+        this.set(file, text);
+      }
+    });
+  }
 
-    async update(file: TFile) {
-        const vault = this.plugin.app.vault;
-        const text = await vault.read(file);
-        this.map.set(file, text);
-    }
+  has(file: TFile){
+    return this.map.has(file);
+  }
 
-    add(file: TFile, text: string) {
-        this.map.set(file, text);
-    }
+  set(file: TFile, text: string) {
+    console.log(`File "${file.name}" load to holder`);
+    this.map.set(file, text);
+  }
 
-    get(file: TFile) {
-        return this.map.get(file);
-    }
+  get(file: TFile) {
+    return this.map.get(file);
+  }
 }

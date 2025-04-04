@@ -32,31 +32,30 @@ export default class SyncController {
       const testText = this.plugin.checkboxUtils.syncCheckboxes(text);
       if (testText === text) {
         console.log(`syncEditor stop, text == testText`);
+        this.plugin.fileStateHolder.set(info.file, text);
         return;
       }
-      const textBefore = this.plugin.fileStateHolder.get(info.file)!;
-      if (textBefore === text) {
-        console.log(`syncEditor end. text is equals.`);
-        return;
-      }
+      const textBefore = this.plugin.fileStateHolder.get(info.file);
       let newText = text;
-      const diffs = this.findDifferentLineIndexes(text, textBefore);
-      for (const diffLineIndex of diffs.reverse()) {
-        console.log(`diff line index ${diffLineIndex}`);
-        newText = this.plugin.checkboxUtils.syncCheckboxesAfterDifferentLine(newText, diffLineIndex);
+
+      if (textBefore && textBefore!== text) {
+        const diffs = this.findDifferentLineIndexes(text, textBefore);
+        for (const diffLineIndex of diffs.reverse()) {
+          newText = this.plugin.checkboxUtils.syncCheckboxesAfterDifferentLine(newText, diffLineIndex);
+        }
+        console.log(`stop diff lines`);
       }
-      console.log(`stop diff lines`, newText);
 
       newText = this.plugin.checkboxUtils.syncCheckboxes(newText);
       if (newText === text) {
-        this.plugin.fileStateHolder.add(info.file, newText);
+        this.plugin.fileStateHolder.set(info.file, newText);
         console.log(`syncEditor stop, text == newText`);
         return;
       }
 
       const cursor = editor.getCursor();
       const newDiffs = this.findDifferentLineIndexes(text, newText);
-      const lastDifferentLineIndex = newDiffs.length > 0 ? diffs[0] : -1;
+      const lastDifferentLineIndex = newDiffs.length > 0 ? newDiffs[0] : -1;
 
       const newLines = newText.split("\n");
       const oldLines = text.split("\n");
@@ -85,8 +84,8 @@ export default class SyncController {
           to: { line: lastDifferentLineIndex, ch: 0 }
         });
       }
-      this.plugin.fileStateHolder.add(info.file, newText);
-      console.log(`syncEditor stop`, editor.getValue());
+      this.plugin.fileStateHolder.set(info.file, newText);
+      console.log(`syncEditor stop`);
     });
   }
 
@@ -98,8 +97,6 @@ export default class SyncController {
       console.log(`sync file ${Date.now()}`)
       let text = await this.plugin.app.vault.read(file);
       let textBefore = this.plugin.fileStateHolder.get(file);
-      console.log(`Text before: `);
-      console.log(textBefore);
       let newText = text;
       if (textBefore) {
         const diffs = this.findDifferentLineIndexes(textBefore, text);
@@ -112,7 +109,7 @@ export default class SyncController {
       if (newText === text) {
         return;
       }
-      await this.plugin.fileStateHolder.add(file, newText);
+      await this.plugin.fileStateHolder.set(file, newText);
       await this.plugin.app.vault.modify(file, newText);
     });
   }
