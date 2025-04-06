@@ -1,35 +1,45 @@
-import { TFile } from "obsidian";
-import CheckboxSyncPlugin from "./main";
 import { Mutex } from "async-mutex";
+import { TFile, Vault } from "obsidian";
 
 
 export default class FileStateHolder {
   private map: Map<TFile, string>;
-  private plugin: CheckboxSyncPlugin;
+  private vault: Vault;
   private mutex: Mutex;
 
-  constructor(plugin: CheckboxSyncPlugin) {
+  constructor(vault: Vault) {
+    this.vault = vault;
     this.map = new Map();
-    this.plugin = plugin;
     this.mutex = new Mutex();
   }
 
   async update(file: TFile) {
     await this.mutex.runExclusive(async () => {
-      const text = await this.plugin.app.vault.read(file);
+      const text = await this.vault.read(file);
       this.set(file, text);
     });
   }
-  async updateIfNeeded(file: TFile) {
-    await this.mutex.runExclusive(async () => {
-      if (!this.map.has(file)) {
-        const text = await this.plugin.app.vault.read(file);
-        this.set(file, text);
+
+  // возвращает понадобилась ли загрузка
+  async updateIfNeeded(file: TFile, text?: string): Promise<boolean> {
+    if (this.has(file)) {
+      return false;    
+    }
+    let res = await this.mutex.runExclusive<boolean>(async () => {
+      if (this.has(file)) {
+        return false;
       }
+      console.log(`updateIfNeeded "${file.name}" start`);
+      if (!text){
+        text = await this.vault.read(file);
+      } 
+      this.set(file, text);     
+      return true;
     });
+    return res;
   }
 
-  has(file: TFile){
+  has(file: TFile) {
     return this.map.has(file);
   }
 

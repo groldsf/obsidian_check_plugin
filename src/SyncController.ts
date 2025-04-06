@@ -1,83 +1,43 @@
 import { Mutex } from "async-mutex";
 import { Editor, EditorChange, MarkdownFileInfo, MarkdownView, TFile } from "obsidian";
 import CheckboxSyncPlugin from "./main";
+import { CheckboxUtils } from "./checkboxUtils";
+import FileStateHolder from "./FileStateHolder";
 
 export default class SyncController {
-  private plugin: CheckboxSyncPlugin;
+  private plugin: CheckboxSyncPlugin;//delete
+  private checkboxUtils: CheckboxUtils;
+  private fileStateHolder: FileStateHolder;
+
   private mutex: Mutex;
 
-  constructor(plugin: CheckboxSyncPlugin) {
-    this.plugin = plugin;
+  constructor(plugin: CheckboxSyncPlugin, checkboxUtils: CheckboxUtils, fileStateHolder: FileStateHolder) {
+    this.plugin = plugin;//delete
+    this.checkboxUtils = checkboxUtils;
+    this.fileStateHolder = fileStateHolder;
     this.mutex = new Mutex();
   }
 
   async syncEditor(editor: Editor, info: MarkdownView | MarkdownFileInfo) {
+    if (!info.file) {
+      return;
+    }
     await this.mutex.runExclusive(() => {
-      console.log(`syncEditor start`);
-
+      const file = info.file!;
+      console.log(`sync editor "${file.basename}" start.`);
       const text = editor.getValue();
-      if (!info.file) {
-        console.log(`file not found`);
-        return;
-      }
-      //проверка, что чекбоксы не синхронизированны
-      const testText = this.plugin.checkboxUtils.syncCheckboxes(text);
-      if (testText === text) {
-        console.log(`syncEditor stop, text == testText`);
-        this.plugin.fileStateHolder.set(info.file, text);
-        return;
-      }
-      const textBefore = this.plugin.fileStateHolder.get(info.file);
-      let newText = text;
+      const textBefore = this.fileStateHolder.get(file);
 
-      if (textBefore && textBefore!== text) {
-        const diffs = this.findDifferentLineIndexes(text, textBefore);
-        for (const diffLineIndex of diffs.reverse()) {
-          newText = this.plugin.checkboxUtils.syncCheckboxesAfterDifferentLine(newText, diffLineIndex);
-        }
-        console.log(`stop diff lines`);
-      }
-
-      newText = this.plugin.checkboxUtils.syncCheckboxes(newText);
+      let newText = this.syncText(text, textBefore);
       if (newText === text) {
-        this.plugin.fileStateHolder.set(info.file, newText);
-        console.log(`syncEditor stop, text == newText`);
+        console.log(`sync editor "${file.basename}" stop. new text equals old text.`);
         return;
       }
 
-      const cursor = editor.getCursor();
-      const newDiffs = this.findDifferentLineIndexes(text, newText);
-      const lastDifferentLineIndex = newDiffs.length > 0 ? newDiffs[0] : -1;
-
-      const newLines = newText.split("\n");
-      const oldLines = text.split("\n");
-      if (newLines.length !== oldLines.length) {
-        throw new Error();
-      }
-      const changes: EditorChange[] = [];
-      for (let i = 0; i < oldLines.length; i++) {
-        if (newLines[i] !== oldLines[i]) {
-          // editor.setLine(i, newLines[i]);
-          changes.push({
-            from: { line: i, ch: 0 },
-            to: { line: i, ch: oldLines[i].length },
-            text: newLines[i]
-          });
-        }
-      }
-      editor.transaction({
-        changes: changes
-      });
-
-      editor.setCursor(cursor);
-      if (lastDifferentLineIndex != -1) {
-        editor.scrollIntoView({
-          from: { line: lastDifferentLineIndex, ch: 0 },
-          to: { line: lastDifferentLineIndex, ch: 0 }
-        });
-      }
-      this.plugin.fileStateHolder.set(info.file, newText);
-      console.log(`syncEditor stop`);
+      this.editEditor(editor, text, newText);
+      this.fileStateHolder.set(file, newText);
+      
+      console.log(`syncEditor "${file.basename}" stop.`);
     });
   }
 
@@ -86,52 +46,88 @@ export default class SyncController {
       return;
     }
     await this.mutex.runExclusive(async () => {
-      console.log(`sync file ${file.basename} date: ${Date.now()}`)
+      console.log(`sync file "${file.basename}" start.`);
       let text = await this.plugin.app.vault.read(file);
-      let textBefore = this.plugin.fileStateHolder.get(file);
-      let newText = text;
-      if (textBefore) {
-        const diffs = this.findDifferentLineIndexes(textBefore, text);
-        for (const diffLineIndex of diffs.reverse()) {
-          newText = this.plugin.checkboxUtils.syncCheckboxesAfterDifferentLine(newText, diffLineIndex);
-        }
-      }
+      let textBefore = this.fileStateHolder.get(file);
 
-      newText = this.plugin.checkboxUtils.syncCheckboxes(newText);
+      let newText = this.syncText(text, textBefore);
+
       if (newText === text) {
+        console.log(`sync file "${file.basename}" stop. new text equals old text.`);
         return;
       }
-      await this.plugin.fileStateHolder.set(file, newText);
+      this.fileStateHolder.set(file, newText);
       await this.plugin.app.vault.modify(file, newText);
+      console.log(`sync file "${file.basename}" stop.`);
     });
   }
 
-  private findDifferentLineIndexes(text1: string, text2: string): number[] {
-    const lines1 = text1.split('\n');
-    const lines2 = text2.split('\n');
-    const minLength = Math.min(lines1.length, lines2.length);
+  syncText(text: string, textBefore: string | undefined): string {
+    let newText;
+    newText = this.syncTextBefore(text, textBefore);
+    newText = this.checkboxUtils.syncCheckboxes(newText);
+    return newText;
+  }
 
+  syncTextBefore(text: string, textBefore: string | undefined): string {
+    if (!textBefore) return text;
+    const beforeLines = textBefore.split('\n');
+    const textLines = text.split('\n');
+
+    if (beforeLines.length !== textLines.length) return text;
+
+    const diffs = this.findDifferentLineIndexes(beforeLines, textLines);
+    if (diffs.length !== 1) {
+      return text;
+    }
+    return this.checkboxUtils.syncCheckboxesAfterDifferentLine(text, diffs[0]);
+  }
+
+  findDifferentLineIndexes(lines1: string[], lines2: string[]): number[] {
+    if (lines1.length !== lines2.length) {
+      throw new Error("the length of the lines must be equal");
+    }
+
+    const length = lines1.length;
     const result: number[] = [];
-
-    for (let i = 0; i < minLength; i++) {
+    for (let i = 0; i < length; i++) {
       if (lines1[i] !== lines2[i]) {
         result.push(i);
       }
     }
-
-    if (lines1.length !== lines2.length) {
-      for (let i = Math.min(lines1.length, lines2.length) + 1; i < Math.max(lines1.length, lines2.length); i++) {
-        result.push(i);
-      }
-    }
-
     return result;
   }
 
-  flushChangeIfNeeded(editor: Editor, info: MarkdownView | MarkdownFileInfo) {
-    if (info instanceof MarkdownView) {
-      console.log(`MarkdownView ${info.file?.path} flush`);
-      info.save();
-    }
+  editEditor(editor: Editor, oldText: string, newText: string){
+    const cursor = editor.getCursor();
+
+      const newLines = newText.split("\n");
+      const oldLines = oldText.split("\n");
+
+      const diffIndexes = this.findDifferentLineIndexes(oldLines, newLines);     
+
+      const changes: EditorChange[] = [];
+
+      for (let ind of diffIndexes) {
+        changes.push({
+          from: { line: ind, ch: 0 },
+          to: { line: ind, ch: oldLines[ind].length },
+          text: newLines[ind]
+        });
+      }
+      editor.transaction({
+        changes: changes
+      });
+
+      editor.setCursor(cursor);
+
+      const lastDifferentLineIndex = diffIndexes.length > 0 ? diffIndexes[0] : -1;
+      if (lastDifferentLineIndex != -1) {
+        editor.scrollIntoView({
+          from: { line: lastDifferentLineIndex, ch: 0 },
+          to: { line: lastDifferentLineIndex, ch: 0 }
+        });
+      }
   }
+
 }
