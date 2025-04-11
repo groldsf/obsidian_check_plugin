@@ -12,7 +12,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    
+
     new Setting(containerEl)
       .setName("X-Only Mode")
       .setDesc("When enabled, only 'x' marks a task as complete. When disabled, any character except space marks a task as complete")
@@ -20,8 +20,9 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
         toggle
           .setValue(this.plugin.settings.xOnlyMode)
           .onChange(async (value) => {
-            this.plugin.settings.xOnlyMode = value;
-            await this.plugin.saveSettings();
+            await this.plugin.updateSettings((settings) => {
+              settings.xOnlyMode = value;
+            });
           })
       );
   }

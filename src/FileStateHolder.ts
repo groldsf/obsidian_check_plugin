@@ -13,27 +13,26 @@ export default class FileStateHolder {
     this.mutex = new Mutex();
   }
 
-  async update(file: TFile) {
-    await this.mutex.runExclusive(async () => {
-      const text = await this.vault.read(file);
-      this.set(file, text);
-    });
-  }
-
-  // возвращает понадобилась ли загрузка
-  async updateIfNeeded(file: TFile, text?: string): Promise<boolean> {
+  /**
+   * Initializes the file's data if it hasn't been initialized yet.
+   * 
+   * @param file - The file object to initialize.
+   * @param text - Optional text content to associate with the file. If not provided, it will be read from the vault.
+   * @returns A promise that resolves to `true` if the file was initialized, or `false` if it was already initialized.
+   */
+  async initIfNeeded(file: TFile, text?: string): Promise<boolean> {
     if (this.has(file)) {
-      return false;    
+      return false;
     }
     let res = await this.mutex.runExclusive<boolean>(async () => {
       if (this.has(file)) {
         return false;
       }
-      console.log(`updateIfNeeded "${file.name}" start`);
-      if (!text){
+      // console.log(`updateIfNeeded "${file.name}" start`);
+      if (!text) {
         text = await this.vault.read(file);
-      } 
-      this.set(file, text);     
+      }
+      this.set(file, text);
       return true;
     });
     return res;
@@ -44,11 +43,19 @@ export default class FileStateHolder {
   }
 
   set(file: TFile, text: string) {
-    console.log(`File "${file.name}" load to holder`);
-    this.map.set(file, text);
+    if (text !== this.map.get(file)) {
+      console.log(`File "${file.name}" load to holder`);
+      this.map.set(file, text);
+    }
   }
 
   get(file: TFile) {
     return this.map.get(file);
+  }
+
+  getAllFiles(): TFile[] {
+    const keysIterator = this.map.keys();
+    const keysArray = Array.from(keysIterator);
+    return keysArray;
   }
 }

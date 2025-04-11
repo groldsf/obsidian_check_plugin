@@ -33,6 +33,9 @@ const config: Config = {
 
   testEnvironment: "node",
 
+  // Limit the number of workers that run tests in parallel
+  maxWorkers: 1, // <--- Задает последовательное выполнение
+
 };
 
 export default config;
