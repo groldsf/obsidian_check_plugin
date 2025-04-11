@@ -100,9 +100,13 @@ export class CheckboxUtils {
   }
 
   syncText(text: string, textBefore: string | undefined): string {
-    let newText;
-    newText = this.propagateStateToChildrenFromSingleDiff(text, textBefore);
-    newText = this.propagateStateFromChildren(newText);
+    let newText = text;
+    if (this.settings.enableAutomaticChildState) {
+      newText = this.propagateStateToChildrenFromSingleDiff(text, textBefore);
+    }
+    if (this.settings.enableAutomaticParentState) {
+      newText = this.propagateStateFromChildren(newText);
+    }
     return newText;
   }
 

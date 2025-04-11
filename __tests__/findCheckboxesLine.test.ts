@@ -5,8 +5,8 @@ describe("CheckboxUtils old", () => {
   let checkboxUtilsSpaceOnly: CheckboxUtils;
 
   beforeEach(() => {
-    checkboxUtilsXOnly = new CheckboxUtils({ xOnlyMode: true });
-    checkboxUtilsSpaceOnly = new CheckboxUtils({ xOnlyMode: false });
+    checkboxUtilsXOnly = new CheckboxUtils({ xOnlyMode: true, enableAutomaticParentState: true, enableAutomaticChildState: true, });
+    checkboxUtilsSpaceOnly = new CheckboxUtils({ xOnlyMode: false, enableAutomaticParentState: true,  enableAutomaticChildState: true,});
   });
 
   describe("findCheckboxesLine", () => {
@@ -120,7 +120,7 @@ describe("CheckboxUtils old", () => {
   describe("updateSettings", () => {
     test("updates xOnlyMode setting correctly", () => {
 
-      const settings = { xOnlyMode: true };
+      const settings = { xOnlyMode: true, enableAutomaticParentState: true,  enableAutomaticChildState: true,};
       const utils = new CheckboxUtils(settings);
       expect(utils.isCheckedSymbol("-")).toBe(false);
       

@@ -9,6 +9,8 @@ import { FileChangeEventHandler } from "./events/FileChangeEventHandler";
 
 const DEFAULT_SETTINGS: CheckboxSyncPluginSettings = {
   xOnlyMode: true,
+  enableAutomaticParentState: true,
+  enableAutomaticChildState: true,
 };
 
 export default class CheckboxSyncPlugin extends Plugin {

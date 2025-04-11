@@ -1,25 +1,45 @@
 // checkboxUtils.test.ts
-import { CheckboxUtils, CheckboxLineInfo } from '../src/checkboxUtils';
+import { CheckboxUtils } from '../src/checkboxUtils';
 import { CheckboxSyncPluginSettings } from '../src/types'; // Предполагаем, что типы в types.ts
 
 // --- Mock Settings ---
 const defaultSettings: Readonly<CheckboxSyncPluginSettings> = {
   xOnlyMode: false, // По умолчанию: любой не-пробел считается 'checked'
+  enableAutomaticParentState: true,
+  enableAutomaticChildState: true,
 };
 
 const xOnlySettings: Readonly<CheckboxSyncPluginSettings> = {
   xOnlyMode: true, // Только 'x' считается 'checked'
+  enableAutomaticParentState: true,
+  enableAutomaticChildState: true,
+};
+
+const settingsParentSyncDisabled: Readonly<CheckboxSyncPluginSettings> = {
+  xOnlyMode: false, // или true, если нужно тестировать комбинацию
+  enableAutomaticParentState: false, // Родитель НЕ обновляется от детей
+  enableAutomaticChildState: true,
+};
+
+const settingsChildSyncDisabled: Readonly<CheckboxSyncPluginSettings> = {
+  xOnlyMode: false,
+  enableAutomaticParentState: true, // Оставим true для этого варианта
+  enableAutomaticChildState: false, // Дети НЕ обновляются от родителя
 };
 
 // --- Test Suite ---
 describe('CheckboxUtils', () => {
   let utilsDefault: CheckboxUtils;
   let utilsXOnly: CheckboxUtils;
+  let utilsParentSyncDisabled: CheckboxUtils;
+  let utilsChildSyncDisabled: CheckboxUtils
 
   beforeEach(() => {
     // Создаем новые экземпляры перед каждым тестом для изоляции
     utilsDefault = new CheckboxUtils(defaultSettings);
     utilsXOnly = new CheckboxUtils(xOnlySettings);
+    utilsParentSyncDisabled = new CheckboxUtils(settingsParentSyncDisabled);
+    utilsChildSyncDisabled = new CheckboxUtils(settingsChildSyncDisabled);
   });
 
   // --- matchCheckboxLine ---
@@ -453,49 +473,72 @@ describe('CheckboxUtils', () => {
 
   // --- syncText (Integration) ---
   describe('syncText', () => {
-    it('should handle user checking parent (down -> up)', () => {
+    describe('When user changes parent state directly', () => {
       const textBefore = [
-        '- [ ] Parent',
-        '  - [ ] Child 1',
-        '  - [ ] Child 2',
-      ].join('\n');
-      const textAfterUserCheck = [
-        '- [x] Parent', // User checked this
-        '  - [ ] Child 1',
-        '  - [ ] Child 2',
-      ].join('\n');
+          '- [ ] Parent',
+          '  - [ ] Child 1',
+          '  - [ ] Child 2',
+        ].join('\n');
+        const textAfterUserCheck = [
+          '- [x] Parent', // User checked this
+          '  - [ ] Child 1',
+          '  - [ ] Child 2',
+        ].join('\n');
 
-      const result = utilsDefault.syncText(textAfterUserCheck, textBefore);
-      const expected = [ // Down propagation first, then up (which changes nothing here)
-        '- [x] Parent',
-        '  - [x] Child 1',
-        '  - [x] Child 2',
-      ].join('\n');
-      expect(result).toBe(expected);
-    });
+      it('should propagate down when child sync is ENABLED', () => { 
+        const result = utilsDefault.syncText(textAfterUserCheck, textBefore);
+        const expected = [
+          '- [x] Parent',
+          '  - [x] Child 1', // Propagated down
+          '  - [x] Child 2', // Propagated down
+        ].join('\n');
+        expect(result).toBe(expected);
+      });
 
-    it('should handle user unchecking parent (down -> up)', () => {
-      const textBefore = [
-        '- [x] Parent',
-        '  - [x] Child 1',
-        '  - [x] Child 2',
+      it('should NOT propagate down when child sync is DISABLED', () => {
+        const result = utilsChildSyncDisabled.syncText(textAfterUserCheck, textBefore); 
+        const expected = [ // Ожидаем, что дети НЕ изменились
+          '- [ ] Parent', // propagateStateFromChildren
+          '  - [ ] Child 1',
+          '  - [ ] Child 2',
+        ].join('\n');
+        expect(result).toBe(expected);
+      });
+
+      const textBeforeUncheck = [
+          '- [x] Parent',
+          '  - [x] Child 1',
+          '  - [x] Child 2',
       ].join('\n');
       const textAfterUserUncheck = [
-        '- [ ] Parent', // User unchecked this
-        '  - [x] Child 1',
-        '  - [x] Child 2',
+          '- [ ] Parent', // User unchecked this
+          '  - [x] Child 1',
+          '  - [x] Child 2',
       ].join('\n');
 
-      const result = utilsDefault.syncText(textAfterUserUncheck, textBefore);
-      const expected = [ // Down propagation first, then up
-        '- [ ] Parent',
-        '  - [ ] Child 1',
-        '  - [ ] Child 2',
-      ].join('\n');
-      expect(result).toBe(expected);
-    });
+      it('should propagate down (uncheck) when child sync is ENABLED', () => { 
+           const result = utilsDefault.syncText(textAfterUserUncheck, textBeforeUncheck);
+           const expected = [
+              '- [ ] Parent',
+              '  - [ ] Child 1', // Propagated down
+              '  - [ ] Child 2', // Propagated down
+           ].join('\n');
+           expect(result).toBe(expected);
+      });
 
-    it('should handle user checking the last child, making parent checked (no down -> up)', () => {
+      it('should NOT propagate down (uncheck) when child sync is DISABLED', () => {
+          const result = utilsChildSyncDisabled.syncText(textAfterUserUncheck, textBeforeUncheck); 
+          const expected = [ // Ожидаем, что дети НЕ изменились
+              '- [x] Parent', // propagateStateFromChildren
+              '  - [x] Child 1',
+              '  - [x] Child 2',
+           ].join('\n');
+           expect(result).toBe(expected);
+      });
+
+  });
+
+    it('should update parent when parent sync is ENABLED and user checks last child', () => {
       const textBefore = [
         '- [ ] Parent',
         '  - [x] Child 1',
@@ -517,7 +560,27 @@ describe('CheckboxUtils', () => {
       expect(result).toBe(expected);
     });
 
-    it('should handle user unchecking one child, making parent unchecked (no down -> up)', () => {
+    it('should NOT update parent when parent sync is DISABLED and user checks last child', () => {
+      const textBefore = [
+        '- [ ] Parent',
+        '  - [x] Child 1',
+        '  - [ ] Child 2', // User will check this
+      ].join('\n');
+      const textAfterChildCheck = [
+        '- [ ] Parent',    // State before syncText runs propagateFromChildren
+        '  - [x] Child 1',
+        '  - [x] Child 2', // User checked this
+      ].join('\n');
+      const result = utilsParentSyncDisabled.syncText(textAfterChildCheck, textBefore); // Использует utilsParentSyncDisabled
+      const expected = [ // Родитель НЕ должен обновиться
+        '- [ ] Parent',
+        '  - [x] Child 1',
+        '  - [x] Child 2',
+      ].join('\n');
+      expect(result).toBe(expected);
+    });
+
+    it('should update parent when parent sync is ENABLED and user unchecks child', () => {
       const textBefore = [
         '- [x] Parent',
         '  - [x] Child 1', // User will uncheck this
@@ -539,7 +602,27 @@ describe('CheckboxUtils', () => {
       expect(result).toBe(expected);
     });
 
-    it('should handle multiple changes correctly (no down -> up)', () => {
+    it('should NOT update parent when parent sync is DISABLED and user unchecks child', () => {
+      const textBefore = [
+        '- [x] Parent',
+        '  - [x] Child 1', // User will uncheck this
+        '  - [x] Child 2',
+      ].join('\n');
+      const textAfterChildUncheck = [
+        '- [x] Parent',    // State before syncText runs propagateFromChildren
+        '  - [ ] Child 1', // User unchecked this
+        '  - [x] Child 2',
+      ].join('\n');
+      const result = utilsParentSyncDisabled.syncText(textAfterChildUncheck, textBefore); // utilsParentSyncDisabled
+      const expected = [ // Родитель НЕ должен обновиться
+        '- [x] Parent',
+        '  - [ ] Child 1',
+        '  - [x] Child 2',
+      ].join('\n');
+      expect(result).toBe(expected);
+    });
+
+    it('should update parent based on children when multiple lines change and parent sync is ENABLED', () => {
       const textBefore = [
         '- [ ] Parent',
         '  - [ ] Child 1',
@@ -562,6 +645,26 @@ describe('CheckboxUtils', () => {
         '  - [x] Child 1',
         '  - [ ] Child 2',
         '  - [ ] Child 3',
+      ].join('\n');
+      expect(result).toBe(expected);
+    });
+
+    it('should NOT update parent when multiple lines change and parent sync is DISABLED', () => {
+      const textBefore = [
+        '- [ ] Parent',
+        '  - [ ] Child 1',
+        '  - [ ] Child 2',
+      ].join('\n');
+      const textAfterMultipleChanges = [ // User checks Parent and Child 1
+        '- [x] Parent',
+        '  - [x] Child 1',
+        '  - [ ] Child 2',
+      ].join('\n');
+      const result = utilsParentSyncDisabled.syncText(textAfterMultipleChanges, textBefore); // utilsParentSyncDisabled
+      const expected = [ // Родитель НЕ корректируется, остается как есть
+        '- [x] Parent',
+        '  - [x] Child 1',
+        '  - [ ] Child 2',
       ].join('\n');
       expect(result).toBe(expected);
     });
