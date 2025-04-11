@@ -19,11 +19,15 @@
 This provides flexibility in how you manage your task lists.
 
 **Example 1: Parent state updates from children**
+
 ![](https://raw.githubusercontent.com/groldsf/obsidian_check_plugin/refs/heads/master/img/showcase.gif)
+
 *Checking the last child causes the parent to become checked. Unchecking any child unchecks the parent (requires `enableAutomaticParentState` setting).*
 
 **Example 2: Child state updates from parent**
+
 ![](https://raw.githubusercontent.com/groldsf/obsidian_check_plugin/refs/heads/master/img/showcase2.gif)
+
 *Manually checking/unchecking the parent checkbox cascades the state change to all children (requires `enableAutomaticChildState` setting).*
 
 ### Supported Lists
