@@ -20,13 +20,13 @@ This provides flexibility in how you manage your task lists.
 
 **Example 1: Parent state updates from children**
 
-![](https://raw.githubusercontent.com/groldsf/obsidian_check_plugin/refs/heads/master/img/showcase.gif)
+<img src="https://raw.githubusercontent.com/groldsf/obsidian_check_plugin/refs/heads/master/img/showcase.gif" alt="Checking the last child causes the parent to become checked. Unchecking any child unchecks the parent (requires `enableAutomaticParentState` setting)." width="300">
 
 *Checking the last child causes the parent to become checked. Unchecking any child unchecks the parent (requires `enableAutomaticParentState` setting).*
 
 **Example 2: Child state updates from parent**
 
-![](https://raw.githubusercontent.com/groldsf/obsidian_check_plugin/refs/heads/master/img/showcase2.gif)
+<img src="https://raw.githubusercontent.com/groldsf/obsidian_check_plugin/refs/heads/master/img/showcase2.gif" alt="Manually checking/unchecking the parent checkbox cascades the state change to all children (requires `enableAutomaticChildState` setting)." width="300">
 
 *Manually checking/unchecking the parent checkbox cascades the state change to all children (requires `enableAutomaticChildState` setting).*
 
