@@ -109,12 +109,14 @@ If you have any questions, suggestions, or find a bug, please [create an issue](
 
 **Пример 1: Состояние родителя обновляется от детей**
 
-![](https://raw.githubusercontent.com/groldsf/obsidian_check_plugin/refs/heads/master/img/showcase.gif)
+<img src="https://raw.githubusercontent.com/groldsf/obsidian_check_plugin/refs/heads/master/img/showcase.gif" alt="Checking the last child causes the parent to become checked. Unchecking any child unchecks the parent (requires `enableAutomaticParentState` setting)." width="300">
+
 *Отметка последнего дочернего чекбокса приводит к отметке родительского. Снятие отметки с любого дочернего элемента снимает отметку с родительского (требует включенной настройки `enableAutomaticParentState`).*
 
 **Пример 2: Состояние детей обновляется от родителя**
 
-![](https://raw.githubusercontent.com/groldsf/obsidian_check_plugin/refs/heads/master/img/showcase2.gif)
+<img src="https://raw.githubusercontent.com/groldsf/obsidian_check_plugin/refs/heads/master/img/showcase2.gif" alt="Manually checking/unchecking the parent checkbox cascades the state change to all children (requires `enableAutomaticChildState` setting)." width="300">
+
 *Ручная отметка/снятие отметки с родительского чекбокса каскадно применяет изменение ко всем дочерним элементам (требует включенной настройки `enableAutomaticChildState`).*
 
 ### Поддерживаемые списки
