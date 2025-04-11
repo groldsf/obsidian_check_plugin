@@ -58,4 +58,9 @@ export default class FileStateHolder {
     const keysArray = Array.from(keysIterator);
     return keysArray;
   }
+
+  delete(file: TFile): boolean {
+    const existed = this.map.delete(file);
+    return existed;
+  }
 }

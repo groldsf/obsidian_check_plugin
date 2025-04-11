@@ -64,30 +64,54 @@ export class FileLoadEventHandler {
   //загрузка в кеш и синхронизация открытых файлов
   async loadAndSyncActiveFiles() {
     const markdownLeaves = this.app.workspace.getLeavesOfType('markdown');
-    await Promise.all(markdownLeaves.map(async (leaf) => await this.loadAndSyncActiveFile(leaf)));
+    await Promise.all(markdownLeaves.map(async (leaf) => await this.initializeStateForLeaf(leaf)));
   }
 
-  private async loadAndSyncActiveFile(leaf: WorkspaceLeaf) {
+  private async initializeStateForLeaf(leaf: WorkspaceLeaf) {
     const view = leaf.view as MarkdownView;
     if (!view.file) return;
-    //вызов ререндера, для кеширования через MarkdownPostProcessor
-    await this.rerenderView(view);
-  }
 
-  // вызывает рендеринг view
-  private async rerenderView(view: MarkdownView) {
-    if (!view.file) return;
+    const file = view.file;
+    console.log(`Initializing state for active file and its embeds: ${file.path}`);
 
-    if (view.getMode() === 'preview') {
-      view.previewMode.rerender();
-    } else {
-      await MarkdownRenderer.render(
-        this.plugin.app,
-        view.editor.getValue(),
-        document.createElement('div'),
-        view.file.path,
-        this.plugin
-      );
+    const filesToInitialize: Set<TFile> = new Set([file]);
+    await this.findEmbedsRecursive(file, filesToInitialize);
+
+    for (const fileToInit of filesToInitialize) {
+        try {
+            const isUpdateNeeded = await this.fileStateHolder.initIfNeeded(fileToInit);
+            // Синхронизируем только если инициализация это потребовала,
+            // ИЛИ если это основной файл, открытый в редакторе (на всякий случай)
+            if (isUpdateNeeded || (fileToInit === file && view.getMode() === 'source')) {
+                 // Если основной файл в редакторе, лучше вызвать syncEditor для него
+                 if (fileToInit === file && view.getMode() === 'source') {
+                    await this.syncController.syncEditor(view.editor, view);
+                 } else {
+                    await this.syncController.syncFile(fileToInit);
+                 }
+            }
+        } catch (error) {
+            console.error(`Error processing file ${fileToInit.path} during initial load:`, error);
+        }
     }
   }
+
+  // Вспомогательная рекурсивная функция для поиска всех вложенных embeds
+  private async findEmbedsRecursive(file: TFile, visited: Set<TFile>) {
+    const cache = this.app.metadataCache.getFileCache(file);
+    if (!cache?.embeds) return;
+
+    for (const embed of cache.embeds) {
+        const embedFile = this.app.metadataCache.getFirstLinkpathDest(embed.link, file.path);
+        if (!embedFile) continue;
+
+        if (embedFile instanceof TFile && embedFile.extension === 'md') {
+            // Если файл еще не посещали, добавляем и ищем его внедрения
+            if (!visited.has(embedFile)) {
+                visited.add(embedFile);
+                await this.findEmbedsRecursive(embedFile, visited);
+            }
+        }
+    }
+}
 }

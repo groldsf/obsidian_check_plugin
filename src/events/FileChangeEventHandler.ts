@@ -1,4 +1,5 @@
-import { App, TFile } from "obsidian";
+import { App, TAbstractFile, TFile } from "obsidian";
+import FileStateHolder from "src/FileStateHolder";
 import CheckboxSyncPlugin from "src/main";
 import SyncController from "src/SyncController";
 
@@ -6,11 +7,13 @@ export class FileChangeEventHandler {
   private plugin: CheckboxSyncPlugin;
   private app: App;
   private syncController: SyncController;
+  private fileStateHolder: FileStateHolder;
 
-  constructor(plugin: CheckboxSyncPlugin, app: App, syncController: SyncController) {
+  constructor(plugin: CheckboxSyncPlugin, app: App, syncController: SyncController, fileStateHolder: FileStateHolder) {
     this.plugin = plugin;
     this.app = app;
     this.syncController = syncController;
+    this.fileStateHolder = fileStateHolder;
   }
 
   registerEvents() {
@@ -28,6 +31,14 @@ export class FileChangeEventHandler {
       this.app.workspace.on("editor-change", async (editor, info) => {
         console.log(`editor-change file ${info.file?.path}`);
         await this.syncController.syncEditor(editor, info);
+      })
+    );
+
+    this.plugin.registerEvent(
+      this.app.vault.on("delete", (file: TAbstractFile) => {
+        if (file instanceof TFile && file.extension === "md") {
+          this.fileStateHolder.delete(file);
+        }
       })
     );
   }
