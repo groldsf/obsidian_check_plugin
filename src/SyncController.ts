@@ -31,6 +31,7 @@ export default class SyncController {
 
       let newText = this.checkboxUtils.syncText(text, textBefore);
       if (newText === text) {
+        this.fileStateHolder.set(file, newText);
         console.log(`sync editor "${file.basename}" stop. new text equals old text.`);
         return;
       }
