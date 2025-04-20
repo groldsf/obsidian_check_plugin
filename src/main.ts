@@ -11,6 +11,9 @@ const DEFAULT_SETTINGS: CheckboxSyncPluginSettings = {
   xOnlyMode: true,
   enableAutomaticParentState: true,
   enableAutomaticChildState: true,
+  checkedSymbols: ['x'],
+  uncheckedSymbols: [' '],
+  unknownSymbolPolicy: 'checked', 
 };
 
 export default class CheckboxSyncPlugin extends Plugin {
