@@ -3,7 +3,7 @@ import { CheckboxSyncPluginSettingTab } from "./CheckboxSyncPluginSettingTab";
 import { CheckboxUtils } from "./checkboxUtils";
 import FileStateHolder from "./FileStateHolder";
 import SyncController from "./SyncController";
-import { CheckboxSyncPluginSettings } from "./types";
+import { CheckboxSyncPluginSettings, UnknownSymbolPolicyEnum } from "./types";
 import { FileLoadEventHandler } from "./events/FileLoadEventHandler";
 import { FileChangeEventHandler } from "./events/FileChangeEventHandler";
 
@@ -13,7 +13,7 @@ const DEFAULT_SETTINGS: CheckboxSyncPluginSettings = {
   enableAutomaticChildState: true,
   checkedSymbols: ['x'],
   uncheckedSymbols: [' '],
-  unknownSymbolPolicy: 'checked', 
+  unknownSymbolPolicy: UnknownSymbolPolicyEnum.Checked, 
 };
 
 export default class CheckboxSyncPlugin extends Plugin {

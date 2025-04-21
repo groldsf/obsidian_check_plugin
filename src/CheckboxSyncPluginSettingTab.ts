@@ -1,6 +1,6 @@
 import { App, ButtonComponent, DropdownComponent, Notice, PluginSettingTab, Setting, TextComponent, ToggleComponent } from "obsidian";
 import CheckboxSyncPlugin from "./main";
-import { UnknownSymbolPolicy } from "./types";
+import { UnknownSymbolPolicyEnum } from "./types";
 
 export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   plugin: CheckboxSyncPlugin;
@@ -116,9 +116,9 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
       .addDropdown(dropdown => {
         this.unknownPolicyDropdown = dropdown;
         dropdown
-          .addOption('checked', 'Treat as Checked')
-          .addOption('unchecked', 'Treat as Unchecked')
-          .addOption('ignore', 'Ignore')
+          .addOption(UnknownSymbolPolicyEnum.Checked, 'Treat as Checked')
+          .addOption(UnknownSymbolPolicyEnum.Unchecked, 'Treat as Unchecked')
+          .addOption(UnknownSymbolPolicyEnum.Ignore, 'Ignore')
           .setValue(this.plugin.settings.unknownSymbolPolicy)
           .onChange(() => this.applyButton.setDisabled(false))
       });
@@ -178,7 +178,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     try {
       const checkedValue = this.checkedSymbolsInput.getValue();
       const uncheckedValue = this.uncheckedSymbolsInput.getValue();
-      const policyValue = this.unknownPolicyDropdown.getValue() as UnknownSymbolPolicy;
+      const policyValue = this.unknownPolicyDropdown.getValue() as UnknownSymbolPolicyEnum;
       const parentValue = this.parentToggle.getValue();
       const childValue = this.childToggle.getValue();
 

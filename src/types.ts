@@ -1,4 +1,8 @@
-export type UnknownSymbolPolicy = 'checked' | 'unchecked' | 'ignore';
+export enum UnknownSymbolPolicyEnum {
+  Checked = 'checked',
+  Unchecked = 'unchecked',
+  Ignore = 'ignore'
+}
 
 export interface CheckboxSyncPluginSettings {
   xOnlyMode: boolean;
@@ -6,5 +10,5 @@ export interface CheckboxSyncPluginSettings {
   enableAutomaticChildState: boolean;
   checkedSymbols: string[];
   uncheckedSymbols: string[];
-  unknownSymbolPolicy: UnknownSymbolPolicy;
+  unknownSymbolPolicy: UnknownSymbolPolicyEnum;
 }
