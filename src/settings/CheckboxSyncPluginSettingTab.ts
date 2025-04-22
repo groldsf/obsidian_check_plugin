@@ -1,6 +1,6 @@
 import { App, ButtonComponent, DropdownComponent, Notice, PluginSettingTab, Setting, TextComponent, ToggleComponent } from "obsidian";
-import CheckboxSyncPlugin from "./main";
-import { CheckboxState } from "./types";
+import CheckboxSyncPlugin from "../main";
+import { CheckboxState } from "../types";
 
 export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   plugin: CheckboxSyncPlugin;
@@ -222,14 +222,13 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
       this.uncheckedSymbolsInput.setValue(this.arrayToJsonString(uncheckedSymbolsArray));
 
       this.errorDisplayEl.setText('');
-      this.applyButton.setButtonText(originalButtonText);
-
       new Notice("Checkbox Sync settings applied!", 3000);
     } catch (error: any) {
       // --- Ошибка ---
       console.error("Error applying checkbox sync settings:", error);
       // Выводим ошибку в специальный div
-      this.errorDisplayEl?.setText(`❌ ${error.message || "An unknown error occurred."}`);
+      this.errorDisplayEl?.setText(`❌ ${error.message || "An unknown error occurred."}`);      
+    } finally {
       this.applyButton?.setButtonText(originalButtonText); // Восстанавливаем текст
     }
   }

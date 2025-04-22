@@ -1,5 +1,5 @@
 import { Plugin, TFile } from "obsidian";
-import { CheckboxSyncPluginSettingTab } from "./CheckboxSyncPluginSettingTab";
+import { CheckboxSyncPluginSettingTab } from "./settings/CheckboxSyncPluginSettingTab";
 import { CheckboxUtils } from "./checkboxUtils";
 import FileStateHolder from "./FileStateHolder";
 import SyncController from "./SyncController";
