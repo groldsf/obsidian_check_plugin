@@ -50,7 +50,10 @@ export class CheckboxUtils {
   }
 
   updateLineCheckboxStateWithInfo(line: string, shouldBeChecked: boolean, lineInfo: CheckboxLineInfo): string {
-    const newCheckChar = shouldBeChecked ? this.settings.checkedSymbols[0] : this.settings.uncheckedSymbols[0];
+    const checkedChar = this.settings.checkedSymbols.length > 0 ? this.settings.checkedSymbols[0] : 'x'; // 'x' как дефолт
+    const uncheckedChar = this.settings.uncheckedSymbols.length > 0 ? this.settings.uncheckedSymbols[0] : ' '; // ' ' как дефолт
+
+    const newCheckChar = shouldBeChecked ? checkedChar : uncheckedChar;
     const pos = lineInfo.checkboxCharPosition;
     if (pos >= 0 && pos < line.length) {
       return line.substring(0, pos) + newCheckChar + line.substring(pos + 1);
@@ -78,13 +81,24 @@ export class CheckboxUtils {
     let j = parentLine + 1;
 
     while (j < lines.length) {
-      const childLineInfo = this.matchCheckboxLine(lines[j]);
+      const childText = lines[j];
+      const childLineInfo = this.matchCheckboxLine(childText);
       if (!childLineInfo || childLineInfo.indent <= parentLineInfo.indent) break;
 
       if (childLineInfo.checkboxState !== CheckboxState.Ignore) {
         lines[j] = this.updateLineCheckboxStateWithInfo(lines[j], parentIsChecked, childLineInfo);
+        j++;
+      } else {
+        //skip children ignore node
+        j++;
+        while (j < lines.length) {
+          const subChildLineInfo = this.matchCheckboxLine(lines[j]);
+          if (!subChildLineInfo || subChildLineInfo.indent <= childLineInfo.indent) {
+            break;
+          };
+          j++;
+        }
       }
-      j++;
     }
     return lines.join("\n");
   }
@@ -111,6 +125,13 @@ export class CheckboxUtils {
         if (childLineInfo.indent <= parentLineInfo.indent) break;
 
         if (childLineInfo.checkboxState === CheckboxState.Ignore) {
+          while (j + 1 < lines.length) {
+            const subChildLineInfo = this.matchCheckboxLine(lines[j + 1]);
+            if (!subChildLineInfo || subChildLineInfo.indent <= childLineInfo.indent) {
+              break;
+            };
+            j++;
+          }
           continue;
         }
         hasChildren = true;
