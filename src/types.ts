@@ -1,5 +1,4 @@
 export interface CheckboxSyncPluginSettings {
-  xOnlyMode: boolean;
   enableAutomaticParentState: boolean;
   enableAutomaticChildState: boolean;
   checkedSymbols: string[];
@@ -14,7 +13,6 @@ export enum CheckboxState {
 }
 
 export const DEFAULT_SETTINGS: CheckboxSyncPluginSettings = {
-  xOnlyMode: true,
   enableAutomaticParentState: true,
   enableAutomaticChildState: true,
   checkedSymbols: ['x'],
