@@ -3,7 +3,7 @@ import { CheckboxUtils } from "./checkboxUtils";
 import { FileChangeEventHandler } from "./events/FileChangeEventHandler";
 import { FileLoadEventHandler } from "./events/FileLoadEventHandler";
 import FileStateHolder from "./FileStateHolder";
-import { CheckboxSyncPluginSettingTab } from "./settings/CheckboxSyncPluginSettingTab";
+import { CheckboxSyncPluginSettingTab } from "./ui/CheckboxSyncPluginSettingTab";
 import SyncController from "./SyncController";
 import { CheckboxSyncPluginSettings, DEFAULT_SETTINGS } from "./types";
 
