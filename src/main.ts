@@ -1,20 +1,11 @@
 import { Plugin, TFile } from "obsidian";
-import { CheckboxSyncPluginSettingTab } from "./settings/CheckboxSyncPluginSettingTab";
 import { CheckboxUtils } from "./checkboxUtils";
-import FileStateHolder from "./FileStateHolder";
-import SyncController from "./SyncController";
-import { CheckboxState, CheckboxSyncPluginSettings } from "./types";
-import { FileLoadEventHandler } from "./events/FileLoadEventHandler";
 import { FileChangeEventHandler } from "./events/FileChangeEventHandler";
-
-const DEFAULT_SETTINGS: CheckboxSyncPluginSettings = {
-  xOnlyMode: true,
-  enableAutomaticParentState: true,
-  enableAutomaticChildState: true,
-  checkedSymbols: ['x'],
-  uncheckedSymbols: [' '],
-  unknownSymbolPolicy: CheckboxState.Checked, 
-};
+import { FileLoadEventHandler } from "./events/FileLoadEventHandler";
+import FileStateHolder from "./FileStateHolder";
+import { CheckboxSyncPluginSettingTab } from "./settings/CheckboxSyncPluginSettingTab";
+import SyncController from "./SyncController";
+import { CheckboxSyncPluginSettings, DEFAULT_SETTINGS } from "./types";
 
 export default class CheckboxSyncPlugin extends Plugin {
   private _settings: CheckboxSyncPluginSettings;

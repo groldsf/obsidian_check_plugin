@@ -1,6 +1,8 @@
 import { App, ButtonComponent, DropdownComponent, Notice, PluginSettingTab, Setting, TextComponent, ToggleComponent } from "obsidian";
 import CheckboxSyncPlugin from "../main";
-import { CheckboxState } from "../types";
+import { CheckboxState, DEFAULT_SETTINGS } from "../types";
+import { ConfirmModal, InfoModal, SaveConfirmModal } from "./modals";
+import { Mutex } from "async-mutex";
 
 export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   plugin: CheckboxSyncPlugin;
@@ -10,7 +12,10 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   private parentToggle: ToggleComponent;
   private childToggle: ToggleComponent;
   private applyButton: ButtonComponent;
+  private resetToDefaultButton: ButtonComponent;
   private errorDisplayEl: HTMLElement;
+  private isDirty: boolean = false;
+  private actionMutex = new Mutex();
 
   constructor(app: App, plugin: CheckboxSyncPlugin) {
     super(app, plugin);
@@ -78,7 +83,18 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     return { isValid: true };
   }
 
+  private settingChanged() {
+    this.isDirty = true;
+    this.applyButton.setDisabled(false).setCta();
+  }
+
+  private settingSaved() {
+    this.isDirty = false;
+    this.applyButton.setDisabled(true).removeCta();
+  }
+
   display(): void {
+    this.isDirty = false;
     const containerEl = this.containerEl;
     containerEl.empty();
     containerEl.createEl('h2', { text: 'Checkbox Sync Settings' });
@@ -94,7 +110,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
         text
           .setPlaceholder("e.g., [\"x\", \" \"]")
           .setValue(this.arrayToJsonString(this.plugin.settings.checkedSymbols))
-          .onChange(() => this.applyButton.setDisabled(false))
+          .onChange(() => this.settingChanged())
       });
 
     // --- Unchecked Symbols ---
@@ -106,7 +122,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
         text
           .setPlaceholder("e.g., [\" \", \"?\", \",\"]")
           .setValue(this.arrayToJsonString(this.plugin.settings.uncheckedSymbols))
-          .onChange(() => this.applyButton.setDisabled(false))
+          .onChange(() => this.settingChanged())
       });
 
     // --- Unknown Symbol Policy ---
@@ -120,7 +136,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
           .addOption(CheckboxState.Unchecked, 'Treat as Unchecked')
           .addOption(CheckboxState.Ignore, 'Ignore')
           .setValue(this.plugin.settings.unknownSymbolPolicy)
-          .onChange(() => this.applyButton.setDisabled(false))
+          .onChange(() => this.settingChanged())
       });
 
 
@@ -133,7 +149,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
         this.parentToggle = toggle;
         toggle
           .setValue(this.plugin.settings.enableAutomaticParentState)
-          .onChange(() => this.applyButton.setDisabled(false))
+          .onChange(() => this.settingChanged())
       });
 
 
@@ -145,7 +161,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
         this.childToggle = toggle;
         toggle
           .setValue(this.plugin.settings.enableAutomaticChildState)
-          .onChange(() => this.applyButton.setDisabled(false))
+          .onChange(() => this.settingChanged())
       });
 
 
@@ -159,77 +175,209 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     this.errorDisplayEl.style.whiteSpace = 'pre-wrap'; // Для переноса длинных ошибок
     this.errorDisplayEl.style.userSelect = 'text'; // или 'all'
 
+    // Используем Setting для группировки кнопок
+    const buttonGroup = new Setting(containerEl)
+      .setClass('checkbox-sync-button-group'); // Добавим класс для возможной стилизации
+
+
+    buttonGroup.addButton(button => {
+      button
+        .setButtonText("Reset changes")
+        .setTooltip("Revert changes to the last applied settings")
+        .onClick(() => {
+          this.resetInputsToSavedSettings();
+        });
+    });
+
+    buttonGroup.addButton(button => {
+      this.resetToDefaultButton = button;
+      button
+        .setButtonText("Reset to defaults")
+        .setTooltip("Reset all settings to default values and apply immediately")
+        .onClick(() => {
+          new ConfirmModal(this.app,
+            "Reset all settings to default and apply immediately?\nThis cannot be undone.", // Добавил \n для переноса
+            async () => { await this.applyDefaultSettings(); }
+          ).open();
+        });
+    });
     // --- Кнопка Применить ---
-    new Setting(containerEl)
+    buttonGroup
       .addButton(button => {
         this.applyButton = button;
         button
           .setButtonText("Apply Changes")
-          .setCta() // Делает кнопку более заметной (синей)
-          .setDisabled(true)
+          .setDisabled(!this.isDirty)
           .onClick(async () => await this.applyChanges())
       });
   }
 
   private async applyChanges() {
-    const originalButtonText = "Apply Changes";
-    this.applyButton.setDisabled(true).setButtonText("Applying...");
+    await this.actionMutex.runExclusive(async () => {
+      const originalButtonText = "Apply Changes";
+      this.applyButton.setDisabled(true).setButtonText("Applying...").removeCta();
 
-    try {
-      const checkedValue = this.checkedSymbolsInput.getValue();
-      const uncheckedValue = this.uncheckedSymbolsInput.getValue();
-      const policyValue = this.unknownPolicyDropdown.getValue() as CheckboxState;
-      const parentValue = this.parentToggle.getValue();
-      const childValue = this.childToggle.getValue();
 
-      const parsedChecked = this.parseJsonStringArray(checkedValue);
-      const parsedUnchecked = this.parseJsonStringArray(uncheckedValue);
+      try {
+        await this.validateAndSaveSettings();
 
-      if (parsedChecked.error) {
-        throw new Error(`Checked Symbols Error: ${parsedChecked.error}`);
+        this.checkedSymbolsInput.setValue(this.arrayToJsonString(this.plugin.settings.checkedSymbols));
+        this.uncheckedSymbolsInput.setValue(this.arrayToJsonString(this.plugin.settings.uncheckedSymbols));
+
+        this.settingSaved();
+        this.errorDisplayEl.setText('');
+        new Notice("Checkbox Sync settings applied!", 3000);
+      } catch (error: any) {
+        // --- Ошибка ---
+        console.error("Error applying checkbox sync settings:", error);
+        // Выводим ошибку в специальный div
+        this.errorDisplayEl?.setText(`❌ ${error.message || "An unknown error occurred."}`);
+        return error;
+      } finally {
+        this.applyButton?.setButtonText(originalButtonText); // Восстанавливаем текст
       }
-      if (parsedUnchecked.error) {
-        throw new Error(`Unchecked Symbols Error: ${parsedUnchecked.error}`);
+    });
+  }
+
+  /**
+   * Resets the settings UI elements to reflect the currently saved plugin settings.
+   */
+  private resetInputsToSavedSettings() {
+    const settings = this.plugin.settings; // Получаем текущие сохраненные настройки
+
+    // Обновляем значения всех полей ввода
+    this.checkedSymbolsInput.setValue(this.arrayToJsonString(settings.checkedSymbols));
+    this.uncheckedSymbolsInput.setValue(this.arrayToJsonString(settings.uncheckedSymbols));
+    this.unknownPolicyDropdown.setValue(settings.unknownSymbolPolicy);
+    this.parentToggle.setValue(settings.enableAutomaticParentState);
+    this.childToggle.setValue(settings.enableAutomaticChildState);
+
+    // Очищаем ошибку и сбрасываем состояние "грязный"
+    this.errorDisplayEl?.setText('');
+    this.settingSaved(); // Используем существующий метод для сброса isDirty и состояния кнопки Apply
+  }
+
+  /**
+   * Applies the default settings immediately after confirmation.
+   */
+  private async applyDefaultSettings() {
+    await this.actionMutex.runExclusive(async () => {
+      this.resetToDefaultButton.setDisabled(true).setButtonText("Resetting...");
+
+      this.errorDisplayEl.setText(''); // Очищаем предыдущие ошибки
+
+      try {
+        const defaultsCopy = { ...DEFAULT_SETTINGS }; // Работаем с копией
+
+        await this.plugin.updateSettings(settings => {
+          // Полностью перезаписываем текущие настройки дефолтными
+          Object.assign(settings, defaultsCopy);
+        });
+
+        // После успешного сохранения обновляем UI и состояние
+        this.resetInputsToSavedSettings(); // Обновит UI по новым settings и сбросит isDirty/кнопку Apply
+
+        new Notice("Settings reset to defaults and applied.", 3000);
+
+      } catch (error: any) {
+        console.error("Error resetting settings to default:", error);
+        this.errorDisplayEl.setText(`❌ Error resetting to defaults: ${error.message}`);
+      } finally {
+        // Восстанавливаем кнопку Reset
+        this.resetToDefaultButton.setDisabled(false).setButtonText("Reset to defaults");
       }
+    });
+  }
 
-      const checkedSymbolsArray = parsedChecked.result;
-      const uncheckedSymbolsArray = parsedUnchecked.result;
+  /**
+   * Overridden hide method to handle unsaved changes.
+   */
+  async hide() {
+    if (this.isDirty) {
+      // Колбэк для кнопки "Save"
+      const saveCallback = async () => {
+        try {
+          await this.validateAndSaveSettings();
+          this.isDirty = false; // Сбрасываем флаг
+          new Notice("Settings saved.", 2000);
+        } catch (error: any) {
+          console.error("Error saving settings on hide:", error);
+          let errorMessage = "An unknown error occurred.";
+          if (error instanceof Error) {
+            errorMessage = error.message;
+          } else if (typeof error === 'string') {
+            errorMessage = error;
+          }
+          // Открываем модалку с ошибкой
+          new InfoModal(this.app, `Failed to save settings:\n\n${errorMessage}\n\nYour changes were not saved.`).open();
+        }
+      };
 
-      const intersectionValidation = this.validateSettingsArraysIntersection(checkedSymbolsArray, uncheckedSymbolsArray);
-      if (!intersectionValidation.isValid) {
-        throw new Error(intersectionValidation.error!);
-      }
+      // Колбэк для кнопки "Discard"
+      const discardCallback = () => {
+        this.isDirty = false; // Считаем изменения отмененными
+      };
 
-      if (checkedSymbolsArray.length === 0) {
-        throw new Error("Checked symbols list cannot be empty.")
-      }
-      if (uncheckedSymbolsArray.length === 0) {
-        throw new Error("Unchecked symbols list cannot be empty.");
-      }
-
-
-      await this.plugin.updateSettings(settings => {
-        settings.checkedSymbols = checkedSymbolsArray;
-        settings.uncheckedSymbols = uncheckedSymbolsArray;
-        settings.unknownSymbolPolicy = policyValue;
-        settings.enableAutomaticParentState = parentValue;
-        settings.enableAutomaticChildState = childValue;
-        console.log(JSON.stringify(settings));
-      });
-
-      // 8. Обновляем поля ввода каноническим JSON (на случай исправлений парсером)
-      this.checkedSymbolsInput.setValue(this.arrayToJsonString(checkedSymbolsArray));
-      this.uncheckedSymbolsInput.setValue(this.arrayToJsonString(uncheckedSymbolsArray));
-
-      this.errorDisplayEl.setText('');
-      new Notice("Checkbox Sync settings applied!", 3000);
-    } catch (error: any) {
-      // --- Ошибка ---
-      console.error("Error applying checkbox sync settings:", error);
-      // Выводим ошибку в специальный div
-      this.errorDisplayEl?.setText(`❌ ${error.message || "An unknown error occurred."}`);      
-    } finally {
-      this.applyButton?.setButtonText(originalButtonText); // Восстанавливаем текст
+      // Открываем модалку Save/Discard и ЖДЕМ ее закрытия
+      const saveModal = new SaveConfirmModal(this.app, saveCallback, discardCallback);
+      saveModal.open();
     }
+    // Продолжаем стандартное закрытие
+    super.hide();
+  }
+
+  /**
+     * Reads UI values, validates them, and calls plugin.updateSettings.
+     * Throws an error if validation or saving fails.
+     * Does NOT interact with UI feedback (buttons, notices, error display).
+     */
+  private async validateAndSaveSettings(): Promise<void> {
+    // 1. Считываем значения из UI
+    const checkedValue = this.checkedSymbolsInput.getValue();
+    const uncheckedValue = this.uncheckedSymbolsInput.getValue();
+    const policyValue = this.unknownPolicyDropdown.getValue() as CheckboxState;
+    const parentValue = this.parentToggle.getValue();
+    const childValue = this.childToggle.getValue();
+
+    // 2. Парсим JSON
+    const parsedChecked = this.parseJsonStringArray(checkedValue);
+    const parsedUnchecked = this.parseJsonStringArray(uncheckedValue);
+
+    // 3. Проверяем ошибки парсинга -> throw
+    if (parsedChecked.error) {
+      throw new Error(`Checked Symbols Error: ${parsedChecked.error}`);
+    }
+    if (parsedUnchecked.error) {
+      throw new Error(`Unchecked Symbols Error: ${parsedUnchecked.error}`);
+    }
+
+    const checkedSymbolsArray = parsedChecked.result;
+    const uncheckedSymbolsArray = parsedUnchecked.result;
+
+    // 4. Валидируем пересечение -> throw
+    const intersectionValidation = this.validateSettingsArraysIntersection(
+      checkedSymbolsArray,
+      uncheckedSymbolsArray
+    );
+    if (!intersectionValidation.isValid) {
+      throw new Error(intersectionValidation.error!);
+    }
+
+    // 5. Валидируем на пустые списки -> throw
+    if (checkedSymbolsArray.length === 0) {
+      throw new Error("Checked symbols list cannot be empty.");
+    }
+    if (uncheckedSymbolsArray.length === 0) {
+      throw new Error("Unchecked symbols list cannot be empty.");
+    }
+
+    // 6. Вызываем сохранение -> await (может кинуть ошибку)
+    await this.plugin.updateSettings(settings => {
+      settings.checkedSymbols = checkedSymbolsArray;
+      settings.uncheckedSymbols = uncheckedSymbolsArray;
+      settings.unknownSymbolPolicy = policyValue;
+      settings.enableAutomaticParentState = parentValue;
+      settings.enableAutomaticChildState = childValue;
+    });
   }
 }

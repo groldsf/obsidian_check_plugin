@@ -12,3 +12,12 @@ export enum CheckboxState {
   Unchecked = 'unchecked',
   Ignore = 'ignore'
 }
+
+export const DEFAULT_SETTINGS: CheckboxSyncPluginSettings = {
+  xOnlyMode: true,
+  enableAutomaticParentState: true,
+  enableAutomaticChildState: true,
+  checkedSymbols: ['x'],
+  uncheckedSymbols: [' '],
+  unknownSymbolPolicy: CheckboxState.Checked, 
+};
