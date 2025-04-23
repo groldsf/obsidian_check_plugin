@@ -120,10 +120,8 @@ export class CheckboxUtils {
 
       for (let j = i + 1; j < lines.length; j++) {
         const childLineInfo = this.matchCheckboxLine(lines[j]);
-        if (!childLineInfo) {
-          continue;
-        }
-        if (childLineInfo.indent <= parentLineInfo.indent) break;
+        
+        if (!childLineInfo || childLineInfo.indent <= parentLineInfo.indent) break;
 
         if (childLineInfo.checkboxState === CheckboxState.Ignore) {
           while (j + 1 < lines.length) {
