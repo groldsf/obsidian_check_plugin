@@ -8,6 +8,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   plugin: CheckboxSyncPlugin;
   private checkedSymbolsInput: TextComponent;
   private uncheckedSymbolsInput: TextComponent;
+  private ignoreSymbolsInput: TextComponent;
   private unknownPolicyDropdown: DropdownComponent;
   private parentToggle: ToggleComponent;
   private childToggle: ToggleComponent;
@@ -78,7 +79,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     const intersection = checkedSymbols.filter(symbol => uncheckedSymbols.includes(symbol));
     if (intersection.length > 0) {
       const displayIntersection = this.arrayToJsonString(intersection); // Используем JSON для вывода ошибки
-      return { isValid: false, error: `Validation error: Symbol(s) found in both Checked and Unchecked lists: ${displayIntersection}` };
+      return { isValid: false, error: `Validation error: Symbol(s) found in both lists: ${displayIntersection}` };
     }
     return { isValid: true };
   }
@@ -122,6 +123,18 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
         text
           .setPlaceholder("e.g., [\" \", \"?\", \",\"]")
           .setValue(this.arrayToJsonString(this.plugin.settings.uncheckedSymbols))
+          .onChange(() => this.settingChanged())
+      });
+
+    // --- Ignore Symbols ---
+    new Setting(containerEl)
+      .setName("Ignore Symbols")
+      .setDesc("Checkboxes with these symbols will be ignored during automatic parent/child state updates. Example: [\"-\", \"~\"]")
+      .addText((text) => {
+        this.ignoreSymbolsInput = text; // Сохраняем ссылку
+        text
+          .setPlaceholder("e.g., [\"-\", \"~\"]")
+          .setValue(this.arrayToJsonString(this.plugin.settings.ignoreSymbols))
           .onChange(() => this.settingChanged())
       });
 
@@ -223,6 +236,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
 
         this.checkedSymbolsInput.setValue(this.arrayToJsonString(this.plugin.settings.checkedSymbols));
         this.uncheckedSymbolsInput.setValue(this.arrayToJsonString(this.plugin.settings.uncheckedSymbols));
+        this.ignoreSymbolsInput.setValue(this.arrayToJsonString(this.plugin.settings.ignoreSymbols));
 
         this.settingSaved();
         this.errorDisplayEl.setText('');
@@ -231,10 +245,9 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
         // --- Ошибка ---
         console.error("Error applying checkbox sync settings:", error);
         // Выводим ошибку в специальный div
-        this.errorDisplayEl?.setText(`❌ ${error.message || "An unknown error occurred."}`);
-        return error;
+        this.errorDisplayEl.setText(`❌ ${error.message || "An unknown error occurred."}`);
       } finally {
-        this.applyButton?.setButtonText(originalButtonText); // Восстанавливаем текст
+        this.applyButton.setButtonText(originalButtonText); // Восстанавливаем текст
       }
     });
   }
@@ -248,6 +261,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     // Обновляем значения всех полей ввода
     this.checkedSymbolsInput.setValue(this.arrayToJsonString(settings.checkedSymbols));
     this.uncheckedSymbolsInput.setValue(this.arrayToJsonString(settings.uncheckedSymbols));
+    this.ignoreSymbolsInput.setValue(this.arrayToJsonString(settings.ignoreSymbols));
     this.unknownPolicyDropdown.setValue(settings.unknownSymbolPolicy);
     this.parentToggle.setValue(settings.enableAutomaticParentState);
     this.childToggle.setValue(settings.enableAutomaticChildState);
@@ -327,14 +341,15 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   }
 
   /**
-     * Reads UI values, validates them, and calls plugin.updateSettings.
-     * Throws an error if validation or saving fails.
-     * Does NOT interact with UI feedback (buttons, notices, error display).
-     */
+   * Reads UI values, validates them, and calls plugin.updateSettings.
+   * Throws an error if validation or saving fails.
+   * Does NOT interact with UI feedback (buttons, notices, error display).
+   */
   private async validateAndSaveSettings(): Promise<void> {
     // 1. Считываем значения из UI
     const checkedValue = this.checkedSymbolsInput.getValue();
     const uncheckedValue = this.uncheckedSymbolsInput.getValue();
+    const ignoreValue = this.ignoreSymbolsInput.getValue();
     const policyValue = this.unknownPolicyDropdown.getValue() as CheckboxState;
     const parentValue = this.parentToggle.getValue();
     const childValue = this.childToggle.getValue();
@@ -342,6 +357,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     // 2. Парсим JSON
     const parsedChecked = this.parseJsonStringArray(checkedValue);
     const parsedUnchecked = this.parseJsonStringArray(uncheckedValue);
+    const parsedIgnore = this.parseJsonStringArray(ignoreValue);
 
     // 3. Проверяем ошибки парсинга -> throw
     if (parsedChecked.error) {
@@ -350,17 +366,26 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     if (parsedUnchecked.error) {
       throw new Error(`Unchecked Symbols Error: ${parsedUnchecked.error}`);
     }
+    if (parsedIgnore.error) {
+      throw new Error(`Ignore Symbols Error: ${parsedIgnore.error}`);
+    }
 
     const checkedSymbolsArray = parsedChecked.result;
     const uncheckedSymbolsArray = parsedUnchecked.result;
+    const ignoreSymbolsArray = parsedIgnore.result;
 
     // 4. Валидируем пересечение -> throw
-    const intersectionValidation = this.validateSettingsArraysIntersection(
-      checkedSymbolsArray,
-      uncheckedSymbolsArray
-    );
-    if (!intersectionValidation.isValid) {
-      throw new Error(intersectionValidation.error!);
+    const intersectionValidation1 = this.validateSettingsArraysIntersection(checkedSymbolsArray, uncheckedSymbolsArray);
+    if (!intersectionValidation1.isValid) {
+      throw new Error(`Lists: checked and unchecked. ${intersectionValidation1.error!}`);
+    }
+    const intersectionValidation2 = this.validateSettingsArraysIntersection(checkedSymbolsArray, ignoreSymbolsArray);
+    if (!intersectionValidation2.isValid) {
+      throw new Error(`Lists: checked and ignore. ${intersectionValidation2.error!}`);
+    }
+    const intersectionValidation3 = this.validateSettingsArraysIntersection(uncheckedSymbolsArray, ignoreSymbolsArray);
+    if (!intersectionValidation3.isValid) {
+      throw new Error(`Lists: unchecked and ignore. ${intersectionValidation3.error!}`);
     }
 
     // 5. Валидируем на пустые списки -> throw
@@ -375,6 +400,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     await this.plugin.updateSettings(settings => {
       settings.checkedSymbols = checkedSymbolsArray;
       settings.uncheckedSymbols = uncheckedSymbolsArray;
+      settings.ignoreSymbols = ignoreSymbolsArray;
       settings.unknownSymbolPolicy = policyValue;
       settings.enableAutomaticParentState = parentValue;
       settings.enableAutomaticChildState = childValue;

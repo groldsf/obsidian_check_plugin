@@ -38,13 +38,14 @@ export class CheckboxUtils {
   }
 
   getCheckboxState(text: string): CheckboxState {
-    // Проверяем наличие символа в списке отмеченных
     if (this.settings.checkedSymbols.includes(text)) {
       return CheckboxState.Checked;
     }
-    // Проверяем наличие символа в списке неотмеченных
     if (this.settings.uncheckedSymbols.includes(text)) {
       return CheckboxState.Unchecked;
+    }
+    if (this.settings.ignoreSymbols.includes(text)) {
+      return CheckboxState.Ignore;
     }
     return this.settings.unknownSymbolPolicy;
   }

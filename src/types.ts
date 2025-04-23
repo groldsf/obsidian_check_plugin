@@ -3,6 +3,7 @@ export interface CheckboxSyncPluginSettings {
   enableAutomaticChildState: boolean;
   checkedSymbols: string[];
   uncheckedSymbols: string[];
+  ignoreSymbols: string[];
   unknownSymbolPolicy: CheckboxState;
 }
 
@@ -17,5 +18,6 @@ export const DEFAULT_SETTINGS: CheckboxSyncPluginSettings = {
   enableAutomaticChildState: true,
   checkedSymbols: ['x'],
   uncheckedSymbols: [' '],
+  ignoreSymbols: [],
   unknownSymbolPolicy: CheckboxState.Checked, 
 };
