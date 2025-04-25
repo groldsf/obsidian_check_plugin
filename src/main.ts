@@ -41,12 +41,15 @@ export default class CheckboxSyncPlugin extends Plugin {
   async updateSettings(callback: (settings: CheckboxSyncPluginSettings) => void | Promise<void>) {
     await callback(this._settings);
     await this.saveData(this.settings);
-    //надо пересинхронизировать все файлы в кеше
-    const allFile = this.fileStateHolder.getAllFiles();
-    await Promise.all(
-      allFile.map(async (file: TFile) => {
-        await this.syncController.syncFile(file);
-      })
-    );
+
+    if (this.settings.enableAutomaticFileSync) {
+      //надо пересинхронизировать все файлы в кеше
+      const allFile = this.fileStateHolder.getAllFiles();
+      await Promise.all(
+        allFile.map(async (file: TFile) => {
+          await this.syncController.syncFile(file);
+        })
+      );
+    }
   }
 }

@@ -12,6 +12,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   private unknownPolicyDropdown: DropdownComponent;
   private parentToggle: ToggleComponent;
   private childToggle: ToggleComponent;
+  private enableAutomaticFileSyncToggle: ToggleComponent;
   private applyButton: ButtonComponent;
   private resetToDefaultButton: ButtonComponent;
   private errorDisplayEl: HTMLElement;
@@ -177,6 +178,16 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
           .onChange(() => this.settingChanged())
       });
 
+    new Setting(containerEl)
+      .setName("Enable automatic file synchronization")
+      .setDesc("If enabled (requires restart or settings reload), automatically syncs checkbox states when files are loaded/opened and after settings changes. If disabled (default), sync only occurs when you manually change a checkbox.")
+      .addToggle(toggle => {
+        this.enableAutomaticFileSyncToggle = toggle;
+        toggle
+          .setValue(this.plugin.settings.enableAutomaticFileSync)
+          .onChange(() => this.settingChanged());
+      });
+
 
     // --- Область для вывода ошибок ---
     this.errorDisplayEl = containerEl.createDiv({ cls: 'checkbox-sync-settings-error' });
@@ -265,6 +276,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     this.unknownPolicyDropdown.setValue(settings.unknownSymbolPolicy);
     this.parentToggle.setValue(settings.enableAutomaticParentState);
     this.childToggle.setValue(settings.enableAutomaticChildState);
+    this.enableAutomaticFileSyncToggle.setValue(settings.enableAutomaticFileSync);
 
     // Очищаем ошибку и сбрасываем состояние "грязный"
     this.errorDisplayEl?.setText('');
@@ -353,6 +365,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     const policyValue = this.unknownPolicyDropdown.getValue() as CheckboxState;
     const parentValue = this.parentToggle.getValue();
     const childValue = this.childToggle.getValue();
+    const automaticFileSyncValue = this.enableAutomaticFileSyncToggle.getValue();
 
     // 2. Парсим JSON
     const parsedChecked = this.parseJsonStringArray(checkedValue);
@@ -404,6 +417,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
       settings.unknownSymbolPolicy = policyValue;
       settings.enableAutomaticParentState = parentValue;
       settings.enableAutomaticChildState = childValue;
+      settings.enableAutomaticFileSync = automaticFileSyncValue;
     });
   }
 }
