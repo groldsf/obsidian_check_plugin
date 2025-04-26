@@ -33,15 +33,16 @@ export class EnableParentSyncSettingComponent extends BaseSettingComponent {
     if (this.toggleComponent) {
       return this.toggleComponent.getValue();
     }
-    console.warn(`getValueFromUi called before render for ${this.getSettingKey()}`);
-    // Используем унаследованный getDefaultValue() для консистентности
-    return this.getDefaultValue();
+    // Если toggleComponent все еще не инициализирован (render не вызывался?)
+    // выбрасываем ошибку, сигнализируя о неправильном использовании
+    throw new Error(`[${this.getSettingKey()}] Cannot get value from UI before component is rendered.`);
   }
 
   setValueInUi(value: any): void {
     if (this.toggleComponent) {
       this.toggleComponent.setValue(value as boolean);
     }
+    throw new Error(`[${this.getSettingKey()}] Attempted to set value before component is rendered.`);
   }
 
   validate(): ValidationError | null {

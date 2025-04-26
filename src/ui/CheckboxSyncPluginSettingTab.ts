@@ -1,10 +1,11 @@
 import { App, ButtonComponent, DropdownComponent, Notice, PluginSettingTab, Setting, TextComponent, ToggleComponent } from "obsidian";
 import CheckboxSyncPlugin from "../main";
-import { CheckboxState, DEFAULT_SETTINGS } from "../types";
+import { CheckboxState, CheckboxSyncPluginSettings, DEFAULT_SETTINGS } from "../types";
 import { ConfirmModal, InfoModal, SaveConfirmModal } from "./modals";
 import { Mutex } from "async-mutex";
 import { SettingGroup } from "./SettingGroup";
 import { EnableParentSyncSettingComponent } from "./components/EnableParentSyncSettingComponent";
+import { ValidationError } from "./validation/types";
 
 export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   plugin: CheckboxSyncPlugin;
@@ -12,7 +13,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   private uncheckedSymbolsInput: TextComponent;
   private ignoreSymbolsInput: TextComponent;
   private unknownPolicyDropdown: DropdownComponent;
-  private parentToggle: ToggleComponent;
+  // private parentToggle: ToggleComponent;
   private childToggle: ToggleComponent;
   private enableAutomaticFileSyncToggle: ToggleComponent;
 
@@ -307,12 +308,25 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   private resetInputsToSavedSettings() {
     const settings = this.plugin.settings; // Получаем текущие сохраненные настройки
 
+    for (const group of this.settingGroups) {
+      for (const component of group.components) {
+        const key = component.getSettingKey();
+        if (key in settings) {
+          try {
+            component.setValueInUi(settings[key]);
+          } catch (error) {
+            console.error(`Error resetting UI for component ${key}:`, error);
+          }
+        }
+      }
+    }
+
     // Обновляем значения всех полей ввода
     this.checkedSymbolsInput.setValue(this.arrayToJsonString(settings.checkedSymbols));
     this.uncheckedSymbolsInput.setValue(this.arrayToJsonString(settings.uncheckedSymbols));
     this.ignoreSymbolsInput.setValue(this.arrayToJsonString(settings.ignoreSymbols));
     this.unknownPolicyDropdown.setValue(settings.unknownSymbolPolicy);
-    this.parentToggle.setValue(settings.enableAutomaticParentState);
+    // this.parentToggle.setValue(settings.enableAutomaticParentState);
     this.childToggle.setValue(settings.enableAutomaticChildState);
     this.enableAutomaticFileSyncToggle.setValue(settings.enableAutomaticFileSync);
 
@@ -396,12 +410,36 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
    * Does NOT interact with UI feedback (buttons, notices, error display).
    */
   private async validateAndSaveSettings(): Promise<void> {
+
+    let errors: ValidationError[] = []; // Массив для сбора всех ошибок валидации
+    let newSettingsData: Partial<CheckboxSyncPluginSettings> = {}; // Объект для новых данных
+
+
+    for (const group of this.settingGroups) {
+      for (const component of group.components) {
+        const key = component.getSettingKey();
+        try {
+          const value = component.getValueFromUi();
+          const validationError = component.validate();
+          if (validationError) {
+            errors.push(validationError); // Добавляем ошибку
+          } else {
+            // Если индивидуальная валидация прошла, сохраняем значение
+            newSettingsData[key] = value;
+          }
+        } catch (err: any) {
+          console.error(`Error processing component ${key}:`, err);
+          errors.push({ field: key, message: `Failed to read value: ${err.message}` });
+        }
+      }
+    }
+
     // 1. Считываем значения из UI
     const checkedValue = this.checkedSymbolsInput.getValue();
     const uncheckedValue = this.uncheckedSymbolsInput.getValue();
     const ignoreValue = this.ignoreSymbolsInput.getValue();
     const policyValue = this.unknownPolicyDropdown.getValue() as CheckboxState;
-    const parentValue = this.parentToggle.getValue();
+    // const parentValue = this.parentToggle.getValue();
     const childValue = this.childToggle.getValue();
     const automaticFileSyncValue = this.enableAutomaticFileSyncToggle.getValue();
 
@@ -447,15 +485,23 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
       throw new Error("Unchecked symbols list cannot be empty.");
     }
 
+    newSettingsData.checkedSymbols = checkedSymbolsArray;
+    newSettingsData.uncheckedSymbols = uncheckedSymbolsArray;
+    newSettingsData.ignoreSymbols = ignoreSymbolsArray;
+    newSettingsData.unknownSymbolPolicy = policyValue;
+    newSettingsData.enableAutomaticChildState = childValue;
+    newSettingsData.enableAutomaticFileSync = automaticFileSyncValue;
+
+    if (errors.length > 0) {
+      // Формируем сообщение об ошибке
+      const errorMessage = errors.map(e => `❌ ${e.field ? `[${e.field}]: ` : ''}${e.message}`).join('\n');
+      throw new Error(errorMessage);
+    }
+
+
     // 6. Вызываем сохранение -> await (может кинуть ошибку)
     await this.plugin.updateSettings(settings => {
-      settings.checkedSymbols = checkedSymbolsArray;
-      settings.uncheckedSymbols = uncheckedSymbolsArray;
-      settings.ignoreSymbols = ignoreSymbolsArray;
-      settings.unknownSymbolPolicy = policyValue;
-      settings.enableAutomaticParentState = parentValue;
-      settings.enableAutomaticChildState = childValue;
-      settings.enableAutomaticFileSync = automaticFileSyncValue;
+      Object.assign(settings, newSettingsData);
     });
   }
 }

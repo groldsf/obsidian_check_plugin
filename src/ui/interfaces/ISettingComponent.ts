@@ -13,12 +13,6 @@ export interface ISettingComponent {
   getSettingKey(): keyof CheckboxSyncPluginSettings;
 
   /**
-   * Получает значение по умолчанию для этой настройки.
-   * @returns Значение по умолчанию.
-   */
-  getDefaultValue(): any;
-
-  /**
    * Рендерит UI-элементы для этой настройки в указанный контейнер.
    * @param container - HTML-элемент, куда добавлять настройку.
    * @param currentValue - Текущее сохраненное значение настройки.
