@@ -47,7 +47,7 @@ export interface ISettingComponent {
    * @param value - Чистое значение для валидации (обычно результат getValueFromUi).
    * @returns Объект ValidationError, если значение невалидно, иначе null.
    */
-  validate(value: any): ValidationError | null;
+  validate(): ValidationError | null;
 
   /**
    * Устанавливает колбэк, который будет вызван при изменении значения в UI.
