@@ -3,6 +3,8 @@ import CheckboxSyncPlugin from "../main";
 import { CheckboxState, DEFAULT_SETTINGS } from "../types";
 import { ConfirmModal, InfoModal, SaveConfirmModal } from "./modals";
 import { Mutex } from "async-mutex";
+import { SettingGroup } from "./SettingGroup";
+import { EnableParentSyncSettingComponent } from "./components/EnableParentSyncSettingComponent";
 
 export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   plugin: CheckboxSyncPlugin;
@@ -13,16 +15,46 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   private parentToggle: ToggleComponent;
   private childToggle: ToggleComponent;
   private enableAutomaticFileSyncToggle: ToggleComponent;
+
+  private settingGroups: SettingGroup[] = []
+
   private applyButton: ButtonComponent;
   private resetToDefaultButton: ButtonComponent;
+
   private errorDisplayEl: HTMLElement;
+
   private isDirty: boolean = false;
   private actionMutex = new Mutex();
 
   constructor(app: App, plugin: CheckboxSyncPlugin) {
     super(app, plugin);
     this.plugin = plugin;
+    this.initializeSettingGroups();
   }
+
+  // Метод для создания и конфигурации групп и компонентов
+  private initializeSettingGroups(): void {
+    // 1. Создаем экземпляр нашего компонента
+    const parentToggleComp = new EnableParentSyncSettingComponent();
+
+    // 2. Устанавливаем ему обработчик изменений, чтобы он мог обновить флаг isDirty
+    // Мы передаем лямбда-функцию, которая вызовет наш метод settingChanged
+    parentToggleComp.setChangeListener(() => this.settingChanged());
+
+    // 3. Создаем группу настроек
+    const behaviorGroup = new SettingGroup(
+      "Synchronization Behavior", // Заголовок группы
+      [parentToggleComp] // Массив компонентов для этой группы (пока один)
+      // Можно добавить описание группы третьим аргументом, если нужно
+    );
+
+    // 4. Сохраняем созданную группу (или группы) в поле класса
+    this.settingGroups = [
+      behaviorGroup
+      // Сюда позже добавятся другие группы (например, для символов)
+    ];
+  }
+
 
   /**
   * Parses a string expecting a JSON array of single-character strings.
@@ -154,6 +186,11 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
       });
 
 
+    for (const group of this.settingGroups) {
+      // Вызываем метод render группы, передавая контейнер и текущие настройки
+      group.render(containerEl, this.plugin.settings);
+    }
+    /*
     containerEl.createEl('h3', { text: 'Synchronization Behavior' });
     // --- Parent State Toggle ---
     new Setting(containerEl)
@@ -166,7 +203,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
           .onChange(() => this.settingChanged())
       });
 
-
+    */
     // --- Child State Toggle ---
     new Setting(containerEl)
       .setName('Update child checkbox state automatically')
@@ -187,6 +224,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.enableAutomaticFileSync)
           .onChange(() => this.settingChanged());
       });
+
 
 
     // --- Область для вывода ошибок ---
