@@ -1,5 +1,5 @@
 import { Setting } from 'obsidian';
-import { CheckboxSyncPluginSettings, DEFAULT_SETTINGS } from '../../types';
+import { CheckboxSyncPluginSettings } from '../../types';
 import { ISettingComponent } from '../interfaces/ISettingComponent';
 import { ValidationError } from '../validation/types';
 // Убрали App и CheckboxSyncPlugin из импортов, если они не нужны ВСЕМ наследникам

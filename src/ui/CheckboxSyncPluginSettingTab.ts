@@ -1,20 +1,20 @@
 import { Mutex } from "async-mutex";
-import { App, ButtonComponent, Notice, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, PluginSettingTab } from "obsidian";
 import CheckboxSyncPlugin from "../main";
 import { CheckboxSyncPluginSettings, DEFAULT_SETTINGS } from "../types";
 import { ErrorDisplay } from "./ErrorDisplay";
 import { SettingGroup } from "./SettingGroup";
-import { CheckedSymbolsSettingComponent } from "./components/CheckedSymbolsSettingComponent";
-import { EnableChildSyncSettingComponent } from "./components/EnableChildSyncSettingComponent";
-import { EnableFileSyncSettingComponent } from "./components/EnableFileSyncSettingComponent";
-import { EnableParentSyncSettingComponent } from "./components/EnableParentSyncSettingComponent";
-import { IgnoreSymbolsSettingComponent } from "./components/IgnoreSymbolsSettingComponent";
-import { UncheckedSymbolsSettingComponent } from "./components/UncheckedSymbolsSettingComponent";
-import { UnknownPolicySettingComponent } from "./components/UnknownPolicySettingComponent";
+import { ISettingsControlActions, SettingsControls } from "./SettingsControls";
+import { CheckedSymbolsSettingComponent } from "./components/checkboxSymbolConfiguration/CheckedSymbolsSettingComponent";
+import { IgnoreSymbolsSettingComponent } from "./components/checkboxSymbolConfiguration/IgnoreSymbolsSettingComponent";
+import { UncheckedSymbolsSettingComponent } from "./components/checkboxSymbolConfiguration/UncheckedSymbolsSettingComponent";
+import { UnknownPolicySettingComponent } from "./components/checkboxSymbolConfiguration/UnknownPolicySettingComponent";
+import { EnableChildSyncSettingComponent } from "./components/synchronizationBehavior/EnableChildSyncSettingComponent";
+import { EnableFileSyncSettingComponent } from "./components/synchronizationBehavior/EnableFileSyncSettingComponent";
+import { EnableParentSyncSettingComponent } from "./components/synchronizationBehavior/EnableParentSyncSettingComponent";
 import { ConfirmModal, InfoModal, SaveConfirmModal } from "./modals";
 import { SettingsValidator } from "./validation/SettingsValidator";
 import { ValidationError } from "./validation/types";
-import { ISettingsControlActions, SettingsControls } from "./SettingsControls";
 
 export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   plugin: CheckboxSyncPlugin;

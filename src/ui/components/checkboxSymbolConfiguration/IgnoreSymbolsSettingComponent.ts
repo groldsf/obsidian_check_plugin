@@ -1,6 +1,6 @@
 import { Setting } from "obsidian";
 import { CheckboxSyncPluginSettings } from "src/types";
-import { BaseTextArraySettingComponent } from "./BaseTextArraySettingComponent";
+import { BaseTextArraySettingComponent } from "src/ui/basedClasses/BaseTextArraySettingComponent";
 
 export class IgnoreSymbolsSettingComponent extends BaseTextArraySettingComponent {
 

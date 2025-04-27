@@ -1,8 +1,8 @@
 import { Setting } from "obsidian";
 import { CheckboxSyncPluginSettings } from "src/types";
-import { ValidationError } from "../validation/types";
-import { validateNotEmptyArray } from "../validation/validators";
-import { BaseTextArraySettingComponent } from "./BaseTextArraySettingComponent";
+import { BaseTextArraySettingComponent } from "src/ui/basedClasses/BaseTextArraySettingComponent";
+import { ValidationError } from "src/ui/validation/types";
+import { validateNotEmptyArray } from "src/ui/validation/validators";
 
 
 export class UncheckedSymbolsSettingComponent extends BaseTextArraySettingComponent {

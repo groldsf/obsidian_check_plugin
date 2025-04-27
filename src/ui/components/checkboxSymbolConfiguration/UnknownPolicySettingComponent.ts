@@ -1,8 +1,8 @@
 import { DropdownComponent, Setting } from "obsidian";
 import { CheckboxSyncPluginSettings, CheckboxState } from "src/types";
-import { ValidationError } from "../validation/types";
-import { validateIsCheckboxState } from "../validation/validators";
-import { BaseSettingComponent } from "./BaseSettingComponent";
+import { BaseSettingComponent } from "src/ui/basedClasses/BaseSettingComponent";
+import { ValidationError } from "src/ui/validation/types";
+import { validateIsCheckboxState } from "src/ui/validation/validators";
 
 
 export class UnknownPolicySettingComponent extends BaseSettingComponent {

@@ -1,8 +1,8 @@
 import { ToggleComponent, Setting } from "obsidian";
 import { CheckboxSyncPluginSettings } from "src/types";
-import { ValidationError } from "../validation/types";
-import { validateValueIsBoolean } from "../validation/validators";
-import { BaseSettingComponent } from "./BaseSettingComponent";
+import { BaseSettingComponent } from "src/ui/basedClasses/BaseSettingComponent";
+import { ValidationError } from "src/ui/validation/types";
+import { validateValueIsBoolean } from "src/ui/validation/validators";
 
 
 export class EnableChildSyncSettingComponent extends BaseSettingComponent {
