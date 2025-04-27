@@ -1,18 +1,19 @@
 import { Mutex } from "async-mutex";
-import { App, ButtonComponent, Notice, PluginSettingTab, Setting, TextComponent } from "obsidian";
+import { App, ButtonComponent, Notice, PluginSettingTab, Setting } from "obsidian";
 import CheckboxSyncPlugin from "../main";
 import { CheckboxSyncPluginSettings, DEFAULT_SETTINGS } from "../types";
+import { ErrorDisplay } from "./ErrorDisplay";
 import { SettingGroup } from "./SettingGroup";
+import { CheckedSymbolsSettingComponent } from "./components/CheckedSymbolsSettingComponent";
 import { EnableChildSyncSettingComponent } from "./components/EnableChildSyncSettingComponent";
 import { EnableFileSyncSettingComponent } from "./components/EnableFileSyncSettingComponent";
 import { EnableParentSyncSettingComponent } from "./components/EnableParentSyncSettingComponent";
+import { IgnoreSymbolsSettingComponent } from "./components/IgnoreSymbolsSettingComponent";
+import { UncheckedSymbolsSettingComponent } from "./components/UncheckedSymbolsSettingComponent";
 import { UnknownPolicySettingComponent } from "./components/UnknownPolicySettingComponent";
 import { ConfirmModal, InfoModal, SaveConfirmModal } from "./modals";
-import { ValidationError } from "./validation/types";
-import { CheckedSymbolsSettingComponent } from "./components/CheckedSymbolsSettingComponent";
-import { UncheckedSymbolsSettingComponent } from "./components/UncheckedSymbolsSettingComponent";
-import { IgnoreSymbolsSettingComponent } from "./components/IgnoreSymbolsSettingComponent";
 import { SettingsValidator } from "./validation/SettingsValidator";
+import { ValidationError } from "./validation/types";
 
 export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   plugin: CheckboxSyncPlugin;
@@ -22,7 +23,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   private applyButton: ButtonComponent;
   private resetToDefaultButton: ButtonComponent;
 
-  private errorDisplayEl: HTMLElement;
+  private errorDisplay: ErrorDisplay;
 
   private isDirty: boolean = false;
   private actionMutex = new Mutex();
@@ -97,14 +98,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     }
 
     // --- Область для вывода ошибок ---
-    this.errorDisplayEl = containerEl.createDiv({ cls: 'checkbox-sync-settings-error' });
-    // Используем стандартные CSS переменные Obsidian для цвета ошибки
-    this.errorDisplayEl.style.color = 'var(--text-error)';
-    this.errorDisplayEl.style.marginTop = '10px';
-    this.errorDisplayEl.style.marginBottom = '10px';
-    this.errorDisplayEl.style.minHeight = '1.5em'; // Резервируем место
-    this.errorDisplayEl.style.whiteSpace = 'pre-wrap'; // Для переноса длинных ошибок
-    this.errorDisplayEl.style.userSelect = 'text'; // или 'all'
+    this.errorDisplay = new ErrorDisplay(containerEl);
 
     // Используем Setting для группировки кнопок
     const buttonGroup = new Setting(containerEl)
@@ -147,7 +141,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     await this.actionMutex.runExclusive(async () => {
       const originalButtonText = "Apply Changes";
       this.applyButton.setDisabled(true).setButtonText("Applying...").removeCta();
-      this.errorDisplayEl.setText('');
+      this.errorDisplay.clear();
 
       try {
         const result = await this.validateAndSaveSettings();
@@ -156,15 +150,13 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
           new Notice("Checkbox Sync settings applied!", 3000);
         } else {
           console.warn("Validation errors:", result.errors);
-          const errorMessage = result.errors
-            .map(e => `❌ ${e.field ? `[${e.field}]: ` : ''}${e.message}`)
-            .join('\n');
-          this.errorDisplayEl.setText(errorMessage);
+          this.errorDisplay.displayErrors(result.errors);
         }
       } catch (error: any) {
         console.error("Unexpected error during applyChanges:", error);
-        this.errorDisplayEl.setText(`❌ An unexpected error occurred: ${error.message || "Unknown error"}`);
-        this.applyButton?.setDisabled(false).setCta();
+        const message = error.message || "Unknown error";
+        this.errorDisplay.displayMessage(`An unexpected error occurred: ${message}`);
+        this.applyButton.setDisabled(false).setCta();
       } finally {
         this.applyButton.setButtonText(originalButtonText); // Восстанавливаем текст
       }
@@ -191,7 +183,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     }
 
     // Очищаем ошибку и сбрасываем состояние "грязный"
-    this.errorDisplayEl?.setText('');
+    this.errorDisplay.clear();
     this.settingSaved(); // Используем существующий метод для сброса isDirty и состояния кнопки Apply
   }
 
@@ -202,7 +194,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     await this.actionMutex.runExclusive(async () => {
       this.resetToDefaultButton.setDisabled(true).setButtonText("Resetting...");
 
-      this.errorDisplayEl.setText(''); // Очищаем предыдущие ошибки
+      this.errorDisplay.clear();// Очищаем предыдущие ошибки
 
       try {
         const defaultsCopy = { ...DEFAULT_SETTINGS }; // Работаем с копией
@@ -219,7 +211,8 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
 
       } catch (error: any) {
         console.error("Error resetting settings to default:", error);
-        this.errorDisplayEl.setText(`❌ Error resetting to defaults: ${error.message}`);
+        const message = error.message || "Unknown error";
+         this.errorDisplay.displayMessage(`Error resetting to defaults: ${message}`);
       } finally {
         // Восстанавливаем кнопку Reset
         this.resetToDefaultButton.setDisabled(false).setButtonText("Reset to defaults");
