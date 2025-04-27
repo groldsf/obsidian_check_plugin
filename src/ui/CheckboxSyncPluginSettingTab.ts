@@ -14,16 +14,16 @@ import { UnknownPolicySettingComponent } from "./components/UnknownPolicySetting
 import { ConfirmModal, InfoModal, SaveConfirmModal } from "./modals";
 import { SettingsValidator } from "./validation/SettingsValidator";
 import { ValidationError } from "./validation/types";
+import { ISettingsControlActions, SettingsControls } from "./SettingsControls";
 
 export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   plugin: CheckboxSyncPlugin;
 
   private settingGroups: SettingGroup[] = []
 
-  private applyButton: ButtonComponent;
-  private resetToDefaultButton: ButtonComponent;
-
   private errorDisplay: ErrorDisplay;
+
+  private settingsControls: SettingsControls;
 
   private isDirty: boolean = false;
   private actionMutex = new Mutex();
@@ -79,12 +79,12 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
 
   private settingChanged() {
     this.isDirty = true;
-    this.applyButton.setDisabled(false).setCta();
+    this.settingsControls.setApplyState({ disabled: false, cta: true });
   }
 
   private settingSaved() {
     this.isDirty = false;
-    this.applyButton.setDisabled(true).removeCta();
+    this.settingsControls.setApplyState({ disabled: true, cta: false });
   }
 
   display(): void {
@@ -100,47 +100,33 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     // --- Область для вывода ошибок ---
     this.errorDisplay = new ErrorDisplay(containerEl);
 
-    // Используем Setting для группировки кнопок
-    const buttonGroup = new Setting(containerEl)
-      .setClass('checkbox-sync-button-group'); // Добавим класс для возможной стилизации
+    // Создаем экземпляр SettingsControls
+    const controlActions: ISettingsControlActions = {
+      onApply: () => this.applyChanges(),
+      onReset: () => this.resetInputsToSavedSettings(),
+      // Оставляем ConfirmModal здесь, но передаем вызов applyDefaultSettings
+      onResetDefaults: () => {
+        new ConfirmModal(this.app,
+          "Reset all settings to default and apply immediately?\nThis cannot be undone.",
+          // Только если пользователь нажал ОК, вызываем реальный сброс
+          async () => { await this.applyDefaultSettings(); }
+          // Optional: callback for cancel if needed
+        ).open();
+      }
+    };
+    this.settingsControls = new SettingsControls(containerEl, controlActions);
 
+    // Устанавливаем начальное состояние кнопки Apply
+    // (isDirty здесь всегда false при первом вызове display)
+    this.settingsControls.setApplyState({ disabled: !this.isDirty, cta: this.isDirty });
 
-    buttonGroup.addButton(button => {
-      button
-        .setButtonText("Reset changes")
-        .setTooltip("Revert changes to the last applied settings")
-        .onClick(() => {
-          this.resetInputsToSavedSettings();
-        });
-    });
-
-    buttonGroup.addButton(button => {
-      this.resetToDefaultButton = button;
-      button
-        .setButtonText("Reset to defaults")
-        .setTooltip("Reset all settings to default values and apply immediately")
-        .onClick(() => {
-          new ConfirmModal(this.app,
-            "Reset all settings to default and apply immediately?\nThis cannot be undone.", // Добавил \n для переноса
-            async () => { await this.applyDefaultSettings(); }
-          ).open();
-        });
-    });
-    // --- Кнопка Применить ---
-    buttonGroup
-      .addButton(button => {
-        this.applyButton = button;
-        button
-          .setButtonText("Apply Changes")
-          .setDisabled(!this.isDirty)
-          .onClick(async () => await this.applyChanges())
-      });
+    // Начальное состояние кнопки Reset Defaults (всегда включена)
+    this.settingsControls.setResetDefaultsState({ disabled: false });
   }
 
   private async applyChanges() {
     await this.actionMutex.runExclusive(async () => {
-      const originalButtonText = "Apply Changes";
-      this.applyButton.setDisabled(true).setButtonText("Applying...").removeCta();
+      this.settingsControls.setApplyState({ disabled: true, text: 'Applying...', cta: false });
       this.errorDisplay.clear();
 
       try {
@@ -156,9 +142,8 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
         console.error("Unexpected error during applyChanges:", error);
         const message = error.message || "Unknown error";
         this.errorDisplay.displayMessage(`An unexpected error occurred: ${message}`);
-        this.applyButton.setDisabled(false).setCta();
       } finally {
-        this.applyButton.setButtonText(originalButtonText); // Восстанавливаем текст
+        this.settingsControls.setApplyState({ disabled: false, cta: true })
       }
     });
   }
@@ -192,9 +177,8 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
    */
   private async applyDefaultSettings() {
     await this.actionMutex.runExclusive(async () => {
-      this.resetToDefaultButton.setDisabled(true).setButtonText("Resetting...");
-
-      this.errorDisplay.clear();// Очищаем предыдущие ошибки
+      this.settingsControls.setResetDefaultsState({ disabled: true, text: 'Resetting...' });
+      this.errorDisplay.clear();
 
       try {
         const defaultsCopy = { ...DEFAULT_SETTINGS }; // Работаем с копией
@@ -212,10 +196,10 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
       } catch (error: any) {
         console.error("Error resetting settings to default:", error);
         const message = error.message || "Unknown error";
-         this.errorDisplay.displayMessage(`Error resetting to defaults: ${message}`);
+        this.errorDisplay.displayMessage(`Error resetting to defaults: ${message}`);
       } finally {
         // Восстанавливаем кнопку Reset
-        this.resetToDefaultButton.setDisabled(false).setButtonText("Reset to defaults");
+        this.settingsControls.setResetDefaultsState({ disabled: false });
       }
     });
   }
