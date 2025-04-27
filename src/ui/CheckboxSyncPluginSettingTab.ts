@@ -39,16 +39,9 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     // Создаем экземпляры наших компонентов
 
     const checkedSymbolsComp = new CheckedSymbolsSettingComponent();
-    checkedSymbolsComp.setChangeListener(() => this.settingChanged());
-
     const uncheckedSymbolsComp = new UncheckedSymbolsSettingComponent();
-    uncheckedSymbolsComp.setChangeListener(() => this.settingChanged());
-
     const unknownPolicyComp = new UnknownPolicySettingComponent();
-    unknownPolicyComp.setChangeListener(() => this.settingChanged());
-
     const ignoreSymbolsComp = new IgnoreSymbolsSettingComponent();
-    ignoreSymbolsComp.setChangeListener(() => this.settingChanged());
 
     const symbolGroup = new SettingGroup(
       "Checkbox Symbol Configuration (Advanced: JSON)",
@@ -57,13 +50,8 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     );
 
     const parentToggleComp = new EnableParentSyncSettingComponent();
-    parentToggleComp.setChangeListener(() => this.settingChanged());
-
     const childrenToggleComp = new EnableChildSyncSettingComponent();
-    childrenToggleComp.setChangeListener(() => this.settingChanged());
-
     const automaticFileSyncToggleComp = new EnableFileSyncSettingComponent();
-    automaticFileSyncToggleComp.setChangeListener(() => this.settingChanged());
 
     const behaviorGroup = new SettingGroup(
       "Synchronization Behavior",
@@ -75,6 +63,14 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
       symbolGroup,
       behaviorGroup
     ];
+
+    const changeListener = () => this.settingChanged();
+    for (const group of this.settingGroups) {
+      for (const component of group.components) {
+        // Устанавливаем общий listener для всех компонентов
+        component.setChangeListener(changeListener);
+      }
+    }
   }
 
   private settingChanged() {
@@ -143,7 +139,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
         const message = error.message || "Unknown error";
         this.errorDisplay.displayMessage(`An unexpected error occurred: ${message}`);
       } finally {
-        this.settingsControls.setApplyState({ disabled: false, cta: true })
+        this.settingsControls.setApplyState({ disabled: !this.isDirty, cta: this.isDirty })
       }
     });
   }
@@ -212,18 +208,26 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
       // Колбэк для кнопки "Save"
       const saveCallback = async () => {
         try {
-          await this.validateAndSaveSettings();
-          this.isDirty = false; // Сбрасываем флаг
-          new Notice("Settings saved.", 2000);
+          const result = await this.validateAndSaveSettings();
+          if (result.success) {
+            this.isDirty = false; // Сбрасываем флаг только при успехе
+            new Notice("Settings saved.", 2000);
+          } else {
+            console.error("Error saving settings on hide (validation):", result.errors);
+            const errorMessage = result.errors
+              .map(e => `❌ ${e.field ? `[${e.field}]: ` : ''}${e.message}`)
+              .join('\n');
+            new InfoModal(this.app, `Failed to save settings:\n\n${errorMessage}\n\nYour changes were not saved.`).open();
+          }
         } catch (error: any) {
-          console.error("Error saving settings on hide:", error);
+          // Ловим НЕОЖИДАННЫЕ ошибки (например, ошибка сохранения)
+          console.error("Error saving settings on hide (unexpected):", error);
           let errorMessage = "An unknown error occurred.";
           if (error instanceof Error) {
             errorMessage = error.message;
           } else if (typeof error === 'string') {
             errorMessage = error;
           }
-          // Открываем модалку с ошибкой
           new InfoModal(this.app, `Failed to save settings:\n\n${errorMessage}\n\nYour changes were not saved.`).open();
         }
       };
