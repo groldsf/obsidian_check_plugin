@@ -1,21 +1,20 @@
-import { App, ButtonComponent, DropdownComponent, Notice, PluginSettingTab, Setting, TextComponent, ToggleComponent } from "obsidian";
-import CheckboxSyncPlugin from "../main";
-import { CheckboxState, CheckboxSyncPluginSettings, DEFAULT_SETTINGS } from "../types";
-import { ConfirmModal, InfoModal, SaveConfirmModal } from "./modals";
 import { Mutex } from "async-mutex";
+import { App, ButtonComponent, Notice, PluginSettingTab, Setting, TextComponent } from "obsidian";
+import CheckboxSyncPlugin from "../main";
+import { CheckboxSyncPluginSettings, DEFAULT_SETTINGS } from "../types";
 import { SettingGroup } from "./SettingGroup";
+import { EnableChildSyncSettingComponent } from "./components/EnableChildSyncSettingComponent";
+import { EnableFileSyncSettingComponent } from "./components/EnableFileSyncSettingComponent";
 import { EnableParentSyncSettingComponent } from "./components/EnableParentSyncSettingComponent";
+import { UnknownPolicySettingComponent } from "./components/UnknownPolicySettingComponent";
+import { ConfirmModal, InfoModal, SaveConfirmModal } from "./modals";
 import { ValidationError } from "./validation/types";
+import { CheckedSymbolsSettingComponent } from "./components/CheckedSymbolsSettingComponent";
+import { UncheckedSymbolsSettingComponent } from "./components/UncheckedSymbolsSettingComponent";
+import { IgnoreSymbolsSettingComponent } from "./components/IgnoreSymbolsSettingComponent";
 
 export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   plugin: CheckboxSyncPlugin;
-  private checkedSymbolsInput: TextComponent;
-  private uncheckedSymbolsInput: TextComponent;
-  private ignoreSymbolsInput: TextComponent;
-  private unknownPolicyDropdown: DropdownComponent;
-  // private parentToggle: ToggleComponent;
-  private childToggle: ToggleComponent;
-  private enableAutomaticFileSyncToggle: ToggleComponent;
 
   private settingGroups: SettingGroup[] = []
 
@@ -35,22 +34,45 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
 
   // Метод для создания и конфигурации групп и компонентов
   private initializeSettingGroups(): void {
-    // 1. Создаем экземпляр нашего компонента
-    const parentToggleComp = new EnableParentSyncSettingComponent();
+    // 1. Создаем экземпляры наших компонентов
 
-    // 2. Устанавливаем ему обработчик изменений, чтобы он мог обновить флаг isDirty
-    // Мы передаем лямбда-функцию, которая вызовет наш метод settingChanged
+    const checkedSymbolsComp = new CheckedSymbolsSettingComponent();
+    checkedSymbolsComp.setChangeListener(() => this.settingChanged());
+
+    const uncheckedSymbolsComp = new UncheckedSymbolsSettingComponent();
+    uncheckedSymbolsComp.setChangeListener(() => this.settingChanged());
+    
+    const unknownPolicyComp = new UnknownPolicySettingComponent();
+    unknownPolicyComp.setChangeListener(() => this.settingChanged());
+
+    const ignoreSymbolsComp = new IgnoreSymbolsSettingComponent();
+    ignoreSymbolsComp.setChangeListener(() => this.settingChanged());
+
+    const symbolGroup = new SettingGroup(
+      // Используем старый заголовок/описание
+      "Checkbox Symbol Configuration (Advanced: JSON)",
+      [checkedSymbolsComp, uncheckedSymbolsComp, ignoreSymbolsComp, unknownPolicyComp], // Пока только один компонент
+      "Warning: Requires valid JSON format. Use double quotes for strings."
+    );
+
+    const parentToggleComp = new EnableParentSyncSettingComponent();
     parentToggleComp.setChangeListener(() => this.settingChanged());
 
-    // 3. Создаем группу настроек
+    const childrenToggleComp = new EnableChildSyncSettingComponent();
+    childrenToggleComp.setChangeListener(() => this.settingChanged());
+
+    const automaticFileSyncToggleComp = new EnableFileSyncSettingComponent();
+    automaticFileSyncToggleComp.setChangeListener(() => this.settingChanged());
+
     const behaviorGroup = new SettingGroup(
       "Synchronization Behavior", // Заголовок группы
-      [parentToggleComp] // Массив компонентов для этой группы (пока один)
+      [parentToggleComp, childrenToggleComp, automaticFileSyncToggleComp] // Массив компонентов для этой группы
       // Можно добавить описание группы третьим аргументом, если нужно
     );
 
-    // 4. Сохраняем созданную группу (или группы) в поле класса
+    // 3. Сохраняем созданную группу (или группы) в поле класса
     this.settingGroups = [
+      symbolGroup,
       behaviorGroup
       // Сюда позже добавятся другие группы (например, для символов)
     ];
@@ -133,100 +155,10 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     const containerEl = this.containerEl;
     containerEl.empty();
     containerEl.createEl('h2', { text: 'Checkbox Sync Settings' });
-    containerEl.createEl('h3', { text: 'Checkbox Symbol Configuration (Advanced: JSON)' });
-    containerEl.createEl('p', { text: 'Warning: Requires valid JSON format. Use double quotes for strings.' });
-
-    // --- Checked Symbols ---
-    new Setting(containerEl)
-      .setName("Checked Symbols")
-      .setDesc("Enter symbols as a JSON array of single-character strings. Example: [\"x\", \"✓\", \" \"]")
-      .addText((text) => {
-        this.checkedSymbolsInput = text;
-        text
-          .setPlaceholder("e.g., [\"x\", \" \"]")
-          .setValue(this.arrayToJsonString(this.plugin.settings.checkedSymbols))
-          .onChange(() => this.settingChanged())
-      });
-
-    // --- Unchecked Symbols ---
-    new Setting(containerEl)
-      .setName("Unchecked Symbols")
-      .setDesc("Enter symbols as a JSON array of single-character strings. Example: [\" \", \"?\", \",\"]")
-      .addText((text) => {
-        this.uncheckedSymbolsInput = text;
-        text
-          .setPlaceholder("e.g., [\" \", \"?\", \",\"]")
-          .setValue(this.arrayToJsonString(this.plugin.settings.uncheckedSymbols))
-          .onChange(() => this.settingChanged())
-      });
-
-    // --- Ignore Symbols ---
-    new Setting(containerEl)
-      .setName("Ignore Symbols")
-      .setDesc("Checkboxes with these symbols will be ignored during automatic parent/child state updates. Example: [\"-\", \"~\"]")
-      .addText((text) => {
-        this.ignoreSymbolsInput = text; // Сохраняем ссылку
-        text
-          .setPlaceholder("e.g., [\"-\", \"~\"]")
-          .setValue(this.arrayToJsonString(this.plugin.settings.ignoreSymbols))
-          .onChange(() => this.settingChanged())
-      });
-
-    // --- Unknown Symbol Policy ---
-    new Setting(containerEl)
-      .setName('Unknown Symbol Policy')
-      .setDesc('How to treat symbols not in Checked or Unchecked lists.')
-      .addDropdown(dropdown => {
-        this.unknownPolicyDropdown = dropdown;
-        dropdown
-          .addOption(CheckboxState.Checked, 'Treat as Checked')
-          .addOption(CheckboxState.Unchecked, 'Treat as Unchecked')
-          .addOption(CheckboxState.Ignore, 'Ignore')
-          .setValue(this.plugin.settings.unknownSymbolPolicy)
-          .onChange(() => this.settingChanged())
-      });
-
-
+    
     for (const group of this.settingGroups) {
-      // Вызываем метод render группы, передавая контейнер и текущие настройки
       group.render(containerEl, this.plugin.settings);
     }
-    /*
-    containerEl.createEl('h3', { text: 'Synchronization Behavior' });
-    // --- Parent State Toggle ---
-    new Setting(containerEl)
-      .setName('Update parent checkbox state automatically')
-      .setDesc('If enabled, the state of a parent checkbox will be automatically updated based on the state of its children (all children checked = parent checked). If disabled, only manually changing a parent will affect its children.')
-      .addToggle(toggle => {
-        this.parentToggle = toggle;
-        toggle
-          .setValue(this.plugin.settings.enableAutomaticParentState)
-          .onChange(() => this.settingChanged())
-      });
-
-    */
-    // --- Child State Toggle ---
-    new Setting(containerEl)
-      .setName('Update child checkbox state automatically')
-      .setDesc('If enabled, changing the state of a parent checkbox will automatically update the state of all its direct and nested children. If disabled, changing a parent checkbox will not affect its children.')
-      .addToggle(toggle => {
-        this.childToggle = toggle;
-        toggle
-          .setValue(this.plugin.settings.enableAutomaticChildState)
-          .onChange(() => this.settingChanged())
-      });
-
-    new Setting(containerEl)
-      .setName("Enable automatic file synchronization")
-      .setDesc("If enabled (requires restart or settings reload), automatically syncs checkbox states when files are loaded/opened and after settings changes. If disabled (default), sync only occurs when you manually change a checkbox.")
-      .addToggle(toggle => {
-        this.enableAutomaticFileSyncToggle = toggle;
-        toggle
-          .setValue(this.plugin.settings.enableAutomaticFileSync)
-          .onChange(() => this.settingChanged());
-      });
-
-
 
     // --- Область для вывода ошибок ---
     this.errorDisplayEl = containerEl.createDiv({ cls: 'checkbox-sync-settings-error' });
@@ -283,16 +215,10 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
 
       try {
         await this.validateAndSaveSettings();
-
-        this.checkedSymbolsInput.setValue(this.arrayToJsonString(this.plugin.settings.checkedSymbols));
-        this.uncheckedSymbolsInput.setValue(this.arrayToJsonString(this.plugin.settings.uncheckedSymbols));
-        this.ignoreSymbolsInput.setValue(this.arrayToJsonString(this.plugin.settings.ignoreSymbols));
-
         this.settingSaved();
         this.errorDisplayEl.setText('');
         new Notice("Checkbox Sync settings applied!", 3000);
       } catch (error: any) {
-        // --- Ошибка ---
         console.error("Error applying checkbox sync settings:", error);
         // Выводим ошибку в специальный div
         this.errorDisplayEl.setText(`❌ ${error.message || "An unknown error occurred."}`);
@@ -320,15 +246,6 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
         }
       }
     }
-
-    // Обновляем значения всех полей ввода
-    this.checkedSymbolsInput.setValue(this.arrayToJsonString(settings.checkedSymbols));
-    this.uncheckedSymbolsInput.setValue(this.arrayToJsonString(settings.uncheckedSymbols));
-    this.ignoreSymbolsInput.setValue(this.arrayToJsonString(settings.ignoreSymbols));
-    this.unknownPolicyDropdown.setValue(settings.unknownSymbolPolicy);
-    // this.parentToggle.setValue(settings.enableAutomaticParentState);
-    this.childToggle.setValue(settings.enableAutomaticChildState);
-    this.enableAutomaticFileSyncToggle.setValue(settings.enableAutomaticFileSync);
 
     // Очищаем ошибку и сбрасываем состояние "грязный"
     this.errorDisplayEl?.setText('');
@@ -434,63 +351,24 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
       }
     }
 
-    // 1. Считываем значения из UI
-    const checkedValue = this.checkedSymbolsInput.getValue();
-    const uncheckedValue = this.uncheckedSymbolsInput.getValue();
-    const ignoreValue = this.ignoreSymbolsInput.getValue();
-    const policyValue = this.unknownPolicyDropdown.getValue() as CheckboxState;
-    // const parentValue = this.parentToggle.getValue();
-    const childValue = this.childToggle.getValue();
-    const automaticFileSyncValue = this.enableAutomaticFileSyncToggle.getValue();
+    const checkedSymbolsFromComponent = newSettingsData.checkedSymbols || [];
+    const uncheckedSymbolsFromComp = newSettingsData.uncheckedSymbols || [];
+    const ignoreSymbolsFromComp = newSettingsData.ignoreSymbols || [];
 
-    // 2. Парсим JSON
-    const parsedChecked = this.parseJsonStringArray(checkedValue);
-    const parsedUnchecked = this.parseJsonStringArray(uncheckedValue);
-    const parsedIgnore = this.parseJsonStringArray(ignoreValue);
-
-    // 3. Проверяем ошибки парсинга -> throw
-    if (parsedChecked.error) {
-      throw new Error(`Checked Symbols Error: ${parsedChecked.error}`);
-    }
-    if (parsedUnchecked.error) {
-      throw new Error(`Unchecked Symbols Error: ${parsedUnchecked.error}`);
-    }
-    if (parsedIgnore.error) {
-      throw new Error(`Ignore Symbols Error: ${parsedIgnore.error}`);
-    }
-
-    const checkedSymbolsArray = parsedChecked.result;
-    const uncheckedSymbolsArray = parsedUnchecked.result;
-    const ignoreSymbolsArray = parsedIgnore.result;
 
     // 4. Валидируем пересечение -> throw
-    const intersectionValidation1 = this.validateSettingsArraysIntersection(checkedSymbolsArray, uncheckedSymbolsArray);
+    const intersectionValidation1 = this.validateSettingsArraysIntersection(checkedSymbolsFromComponent, uncheckedSymbolsFromComp);
     if (!intersectionValidation1.isValid) {
       throw new Error(`Lists: checked and unchecked. ${intersectionValidation1.error!}`);
     }
-    const intersectionValidation2 = this.validateSettingsArraysIntersection(checkedSymbolsArray, ignoreSymbolsArray);
+    const intersectionValidation2 = this.validateSettingsArraysIntersection(checkedSymbolsFromComponent, ignoreSymbolsFromComp);
     if (!intersectionValidation2.isValid) {
       throw new Error(`Lists: checked and ignore. ${intersectionValidation2.error!}`);
     }
-    const intersectionValidation3 = this.validateSettingsArraysIntersection(uncheckedSymbolsArray, ignoreSymbolsArray);
+    const intersectionValidation3 = this.validateSettingsArraysIntersection(uncheckedSymbolsFromComp, ignoreSymbolsFromComp);
     if (!intersectionValidation3.isValid) {
       throw new Error(`Lists: unchecked and ignore. ${intersectionValidation3.error!}`);
     }
-
-    // 5. Валидируем на пустые списки -> throw
-    if (checkedSymbolsArray.length === 0) {
-      throw new Error("Checked symbols list cannot be empty.");
-    }
-    if (uncheckedSymbolsArray.length === 0) {
-      throw new Error("Unchecked symbols list cannot be empty.");
-    }
-
-    newSettingsData.checkedSymbols = checkedSymbolsArray;
-    newSettingsData.uncheckedSymbols = uncheckedSymbolsArray;
-    newSettingsData.ignoreSymbols = ignoreSymbolsArray;
-    newSettingsData.unknownSymbolPolicy = policyValue;
-    newSettingsData.enableAutomaticChildState = childValue;
-    newSettingsData.enableAutomaticFileSync = automaticFileSyncValue;
 
     if (errors.length > 0) {
       // Формируем сообщение об ошибке
