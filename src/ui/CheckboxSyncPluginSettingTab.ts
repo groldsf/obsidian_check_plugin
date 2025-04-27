@@ -35,7 +35,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
 
   // Метод для создания и конфигурации групп и компонентов
   private initializeSettingGroups(): void {
-    // 1. Создаем экземпляры наших компонентов
+    // Создаем экземпляры наших компонентов
 
     const checkedSymbolsComp = new CheckedSymbolsSettingComponent();
     checkedSymbolsComp.setChangeListener(() => this.settingChanged());
@@ -50,9 +50,8 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     ignoreSymbolsComp.setChangeListener(() => this.settingChanged());
 
     const symbolGroup = new SettingGroup(
-      // Используем старый заголовок/описание
       "Checkbox Symbol Configuration (Advanced: JSON)",
-      [checkedSymbolsComp, uncheckedSymbolsComp, ignoreSymbolsComp, unknownPolicyComp], // Пока только один компонент
+      [checkedSymbolsComp, uncheckedSymbolsComp, ignoreSymbolsComp, unknownPolicyComp],
       "Warning: Requires valid JSON format. Use double quotes for strings."
     );
 
@@ -66,16 +65,14 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     automaticFileSyncToggleComp.setChangeListener(() => this.settingChanged());
 
     const behaviorGroup = new SettingGroup(
-      "Synchronization Behavior", // Заголовок группы
-      [parentToggleComp, childrenToggleComp, automaticFileSyncToggleComp] // Массив компонентов для этой группы
-      // Можно добавить описание группы третьим аргументом, если нужно
+      "Synchronization Behavior",
+      [parentToggleComp, childrenToggleComp, automaticFileSyncToggleComp]
     );
 
-    // 3. Сохраняем созданную группу (или группы) в поле класса
+    // Сохраняем созданную группу (или группы) в поле класса
     this.settingGroups = [
       symbolGroup,
       behaviorGroup
-      // Сюда позже добавятся другие группы (например, для символов)
     ];
   }
 
@@ -171,7 +168,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
    * Resets the settings UI elements to reflect the currently saved plugin settings.
    */
   private resetInputsToSavedSettings() {
-    const settings = this.plugin.settings; // Получаем текущие сохраненные настройки
+    const settings = this.plugin.settings;
 
     for (const group of this.settingGroups) {
       for (const component of group.components) {
@@ -270,7 +267,6 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     let errors: ValidationError[] = []; // Массив для сбора всех ошибок валидации
     let newSettingsData: Partial<CheckboxSyncPluginSettings> = {}; // Объект для новых данных
 
-
     for (const group of this.settingGroups) {
       for (const component of group.components) {
         const key = component.getSettingKey();
@@ -278,9 +274,8 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
           const value = component.getValueFromUi();
           const validationError = component.validate();
           if (validationError) {
-            errors.push(validationError); // Добавляем ошибку
+            errors.push(validationError);
           } else {
-            // Если индивидуальная валидация прошла, сохраняем значение
             newSettingsData[key] = value;
           }
         } catch (err: any) {
@@ -290,25 +285,17 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
       }
     }
 
-    // --- Перекрестная Валидация
-    // Выполняем только если НЕТ ошибок от компонентов (индивидуальной валидации/парсинга)
     if (errors.length === 0) {
       const settingsValidator = new SettingsValidator();
-      // Передаем собранные и _провалидированные_ данные
       const crossErrors = settingsValidator.validate(newSettingsData);
-      // Добавляем ошибки перекрестной валидации к общему списку
       errors.push(...crossErrors);
     }
 
-
     if (errors.length > 0) {
-      // Формируем сообщение об ошибке
       const errorMessage = errors.map(e => `❌ ${e.field ? `[${e.field}]: ` : ''}${e.message}`).join('\n');
       throw new Error(errorMessage);
     }
 
-
-    // Вызываем сохранение -> await (может кинуть ошибку)
     await this.plugin.updateSettings(settings => {
       Object.assign(settings, newSettingsData);
     });
