@@ -147,17 +147,24 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     await this.actionMutex.runExclusive(async () => {
       const originalButtonText = "Apply Changes";
       this.applyButton.setDisabled(true).setButtonText("Applying...").removeCta();
-
+      this.errorDisplayEl.setText('');
 
       try {
-        await this.validateAndSaveSettings();
-        this.settingSaved();
-        this.errorDisplayEl.setText('');
-        new Notice("Checkbox Sync settings applied!", 3000);
+        const result = await this.validateAndSaveSettings();
+        if (result.success) {
+          this.settingSaved();
+          new Notice("Checkbox Sync settings applied!", 3000);
+        } else {
+          console.warn("Validation errors:", result.errors);
+          const errorMessage = result.errors
+            .map(e => `❌ ${e.field ? `[${e.field}]: ` : ''}${e.message}`)
+            .join('\n');
+          this.errorDisplayEl.setText(errorMessage);
+        }
       } catch (error: any) {
-        console.error("Error applying checkbox sync settings:", error);
-        // Выводим ошибку в специальный div
-        this.errorDisplayEl.setText(`❌ ${error.message || "An unknown error occurred."}`);
+        console.error("Unexpected error during applyChanges:", error);
+        this.errorDisplayEl.setText(`❌ An unexpected error occurred: ${error.message || "Unknown error"}`);
+        this.applyButton?.setDisabled(false).setCta();
       } finally {
         this.applyButton.setButtonText(originalButtonText); // Восстанавливаем текст
       }
@@ -262,7 +269,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
    * Throws an error if validation or saving fails.
    * Does NOT interact with UI feedback (buttons, notices, error display).
    */
-  private async validateAndSaveSettings(): Promise<void> {
+  private async validateAndSaveSettings(): Promise<{ success: boolean; errors: ValidationError[] }> {
 
     let errors: ValidationError[] = []; // Массив для сбора всех ошибок валидации
     let newSettingsData: Partial<CheckboxSyncPluginSettings> = {}; // Объект для новых данных
@@ -292,12 +299,18 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     }
 
     if (errors.length > 0) {
-      const errorMessage = errors.map(e => `❌ ${e.field ? `[${e.field}]: ` : ''}${e.message}`).join('\n');
-      throw new Error(errorMessage);
+      return { success: false, errors: errors };
     }
 
-    await this.plugin.updateSettings(settings => {
-      Object.assign(settings, newSettingsData);
-    });
+    try {
+      await this.plugin.updateSettings(settings => {
+        Object.assign(settings, newSettingsData);
+      });
+      return { success: true, errors: [] };
+    } catch (saveError: any) {
+      // Ловим ТОЛЬКО ошибки сохранения (от updateSettings)
+      console.error("Error saving settings:", saveError);
+      throw saveError;
+    }
   }
 }
