@@ -17,24 +17,62 @@ export class SettingsValidator {
   public validate(settingsData: Partial<CheckboxSyncPluginSettings>): ValidationError[] {
     const errors: ValidationError[] = [];
 
-    // Пример: Проверка пересечения списков символов (будет реализована позже)
-    // if (settingsData.checkedSymbols && settingsData.uncheckedSymbols) {
-    //     const intersection = settingsData.checkedSymbols.filter(symbol => settingsData.uncheckedSymbols!.includes(symbol));
-    //     if (intersection.length > 0) {
-    //         errors.push({
-    //             // Можно не указывать поле, т.к. ошибка затрагивает несколько
-    //             message: `Symbols found in both Checked and Unchecked lists: ${JSON.stringify(intersection)}`
-    //         });
-    //     }
-    // }
-    // ... другие перекрестные проверки ...
+    const checked = settingsData.checkedSymbols ?? [];
+    const unchecked = settingsData.uncheckedSymbols ?? [];
+    const ignore = settingsData.ignoreSymbols ?? [];
 
-    // Пока возвращаем пустой массив, логика будет добавлена на Шаге 6
+    // --- Проверка пересечений ---
+
+    // Пересечение Checked и Unchecked
+    const intersection1 = this.findIntersection(checked, unchecked);
+    if (intersection1.length > 0) {
+      errors.push({
+        message: `Symbols found in both Checked and Unchecked lists: ${this.formatSymbolsForError(intersection1)}`
+      });
+    }
+
+    // Пересечение Checked и Ignore
+    const intersection2 = this.findIntersection(checked, ignore);
+    if (intersection2.length > 0) {
+      errors.push({
+        message: `Symbols found in both Checked and Ignore lists: ${this.formatSymbolsForError(intersection2)}`
+      });
+    }
+
+    // Пересечение Unchecked и Ignore
+    const intersection3 = this.findIntersection(unchecked, ignore);
+    if (intersection3.length > 0) {
+      errors.push({
+        message: `Symbols found in both Unchecked and Ignore lists: ${this.formatSymbolsForError(intersection3)}`
+      });
+    }
+
     return errors;
   }
 
-  // Сюда можно добавить статические вспомогательные методы для валидации, если нужно
-  // public static validateSymbolListsIntersection(listA: string[], listB: string[]): string[] {
-  //     return listA.filter(symbol => listB.includes(symbol));
-  // }
+  /**
+     * Находит пересечение двух массивов строк.
+     * @param listA Первый массив.
+     * @param listB Второй массив.
+     * @returns Массив строк, присутствующих в обоих списках.
+     */
+  private findIntersection(listA: string[], listB: string[]): string[] {
+    if (!listA || !listB) return []; // Защита от null/undefined
+    const setB = new Set(listB);
+    return listA.filter(symbol => setB.has(symbol));
+  }
+
+  /**
+   * Форматирует массив символов для вывода в сообщении об ошибке (как JSON).
+   * @param symbols Массив символов.
+   * @returns Строка JSON.
+   */
+  private formatSymbolsForError(symbols: string[]): string {
+    try {
+      return JSON.stringify(symbols);
+    } catch (e) {
+      // На случай очень странных ошибок
+      return symbols.join(', ');
+    }
+  }
 }

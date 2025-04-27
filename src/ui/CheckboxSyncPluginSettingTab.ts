@@ -12,6 +12,7 @@ import { ValidationError } from "./validation/types";
 import { CheckedSymbolsSettingComponent } from "./components/CheckedSymbolsSettingComponent";
 import { UncheckedSymbolsSettingComponent } from "./components/UncheckedSymbolsSettingComponent";
 import { IgnoreSymbolsSettingComponent } from "./components/IgnoreSymbolsSettingComponent";
+import { SettingsValidator } from "./validation/SettingsValidator";
 
 export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   plugin: CheckboxSyncPlugin;
@@ -41,7 +42,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
 
     const uncheckedSymbolsComp = new UncheckedSymbolsSettingComponent();
     uncheckedSymbolsComp.setChangeListener(() => this.settingChanged());
-    
+
     const unknownPolicyComp = new UnknownPolicySettingComponent();
     unknownPolicyComp.setChangeListener(() => this.settingChanged());
 
@@ -78,68 +79,6 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     ];
   }
 
-
-  /**
-  * Parses a string expecting a JSON array of single-character strings.
-  */
-  private parseJsonStringArray(value: string): { result: string[], error?: string } {
-    if (value == null || typeof value !== 'string') {
-      return { result: [], error: "Input must be a string." };
-    }
-    const trimmedValue = value.trim();
-    if (trimmedValue === '') {
-      return { result: [] };
-    }
-
-    let parsed: any;
-    try {
-      parsed = JSON.parse(trimmedValue);
-    } catch (e: any) {
-      return { result: [], error: `Invalid JSON format: ${e.message}` };
-    }
-
-    if (!Array.isArray(parsed)) {
-      return { result: [], error: "Invalid format: Input must be a valid JSON array (e.g., [\"x\", \" \"] )." };
-    }
-
-    const symbols = new Set<string>();
-    for (let i = 0; i < parsed.length; i++) {
-      const element = parsed[i];
-      if (typeof element !== 'string') {
-        return { result: [], error: `Invalid content: Array element at index ${i} is not a string.` };
-      }
-      if (element.length !== 1) {
-        return { result: [], error: `Invalid content: Element "${element}" at index ${i} must be a single character.` };
-      }
-      symbols.add(element);
-    }
-
-    return { result: [...symbols] }; // Возвращаем массив уникальных символов
-  }
-
-  private arrayToJsonString(symbols: string[] | undefined): string {
-    if (!symbols || symbols.length === 0) {
-      return '[]';
-    }
-    try {
-      // Используем форматирование с отступами для лучшей читаемости в TextArea
-      return JSON.stringify(symbols);
-    } catch (e) {
-      // На случай, если в массиве окажется что-то несериализуемое (хотя не должно)
-      console.error("Error stringifying array to JSON:", e);
-      return '[]';
-    }
-  }
-
-  private validateSettingsArraysIntersection(checkedSymbols: string[], uncheckedSymbols: string[]): { isValid: boolean; error?: string } {
-    const intersection = checkedSymbols.filter(symbol => uncheckedSymbols.includes(symbol));
-    if (intersection.length > 0) {
-      const displayIntersection = this.arrayToJsonString(intersection); // Используем JSON для вывода ошибки
-      return { isValid: false, error: `Validation error: Symbol(s) found in both lists: ${displayIntersection}` };
-    }
-    return { isValid: true };
-  }
-
   private settingChanged() {
     this.isDirty = true;
     this.applyButton.setDisabled(false).setCta();
@@ -155,7 +94,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     const containerEl = this.containerEl;
     containerEl.empty();
     containerEl.createEl('h2', { text: 'Checkbox Sync Settings' });
-    
+
     for (const group of this.settingGroups) {
       group.render(containerEl, this.plugin.settings);
     }
@@ -351,24 +290,16 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
       }
     }
 
-    const checkedSymbolsFromComponent = newSettingsData.checkedSymbols || [];
-    const uncheckedSymbolsFromComp = newSettingsData.uncheckedSymbols || [];
-    const ignoreSymbolsFromComp = newSettingsData.ignoreSymbols || [];
+    // --- Перекрестная Валидация
+    // Выполняем только если НЕТ ошибок от компонентов (индивидуальной валидации/парсинга)
+    if (errors.length === 0) {
+      const settingsValidator = new SettingsValidator();
+      // Передаем собранные и _провалидированные_ данные
+      const crossErrors = settingsValidator.validate(newSettingsData);
+      // Добавляем ошибки перекрестной валидации к общему списку
+      errors.push(...crossErrors);
+    }
 
-
-    // 4. Валидируем пересечение -> throw
-    const intersectionValidation1 = this.validateSettingsArraysIntersection(checkedSymbolsFromComponent, uncheckedSymbolsFromComp);
-    if (!intersectionValidation1.isValid) {
-      throw new Error(`Lists: checked and unchecked. ${intersectionValidation1.error!}`);
-    }
-    const intersectionValidation2 = this.validateSettingsArraysIntersection(checkedSymbolsFromComponent, ignoreSymbolsFromComp);
-    if (!intersectionValidation2.isValid) {
-      throw new Error(`Lists: checked and ignore. ${intersectionValidation2.error!}`);
-    }
-    const intersectionValidation3 = this.validateSettingsArraysIntersection(uncheckedSymbolsFromComp, ignoreSymbolsFromComp);
-    if (!intersectionValidation3.isValid) {
-      throw new Error(`Lists: unchecked and ignore. ${intersectionValidation3.error!}`);
-    }
 
     if (errors.length > 0) {
       // Формируем сообщение об ошибке
@@ -377,7 +308,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
     }
 
 
-    // 6. Вызываем сохранение -> await (может кинуть ошибку)
+    // Вызываем сохранение -> await (может кинуть ошибку)
     await this.plugin.updateSettings(settings => {
       Object.assign(settings, newSettingsData);
     });
