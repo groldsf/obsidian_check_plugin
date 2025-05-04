@@ -14,4 +14,4 @@ aux_links:
     - "https://github.com/groldsf/obsidian_check_plugin" # Замените на URL вашего репозитория
 
 # Настройки цветовой схемы (необязательно, по умолчанию светлая)
-color_scheme: auto
+color_scheme: dark
