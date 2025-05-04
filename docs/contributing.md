@@ -1,6 +1,7 @@
 ---
+title: Contributing
+nav_order: 6
 ---
-
 # Contributing
 
 - [English](#english)

@@ -1,3 +1,7 @@
+---
+title: Welcome
+nav_order: 0
+---
 # Welcome to Checkbox Sync Documentation
 
 - [English](#english)
@@ -14,11 +18,11 @@ It offers bidirectional synchronization options based on your settings:
 This provides flexibility in how you manage your task lists.
 
 **Quick Links:**
-*   [Installation Guide](installation.md)
 *   [Usage and Examples](usage.md)
 *   [Settings Explained](settings.md)
 *   [Changelog](changelog.md)
 *   [Roadmap](roadmap.md)
+*   [Installation Guide](installation.md)
 *   [Contributing Guide](contributing.md)
 
 ### Acknowledgments
@@ -38,11 +42,11 @@ This provides flexibility in how you manage your task lists.
 Это обеспечивает гибкость в управлении списками задач.
 
 **Быстрые ссылки:**
-*   [Руководство по установке](installation.md)
 *   [Использование и примеры](usage.md)
 *   [Описание настроек](settings.md)
 *   [История изменений](changelog.md)
 *   [Планы (Roadmap)](roadmap.md)
+*   [Руководство по установке](installation.md)
 *   [Руководство для контрибьюторов](contributing.md)
 
 ### Благодарности

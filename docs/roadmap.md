@@ -1,3 +1,7 @@
+---
+title: Roadmap
+nav_order: 4
+---
 # Roadmap
 
 This document outlines the planned features and ideas for future development of the Checkbox Sync plugin.

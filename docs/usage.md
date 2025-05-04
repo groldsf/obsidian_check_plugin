@@ -1,3 +1,7 @@
+---
+title: Usage and Examples
+nav_order: 1
+---
 # Usage and Examples
 
 - [English](#english)

@@ -1,3 +1,7 @@
+---
+title: Settings
+nav_order: 2
+---
 # Settings
 
 - [English](#english)
