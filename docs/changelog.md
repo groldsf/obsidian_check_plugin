@@ -4,6 +4,15 @@ nav_order: 3
 ---
 # Changelog
 
+## [1.1.0] - 2025-05-05
+### Added
+- Added Feature: Flexible Checkbox Symbol Configuration[#11](https://github.com/groldsf/obsidian_check_plugin/issues/11).
+- Added Feature: Setting to Disable Automatic Checkbox Synchronization on File Open[#13](https://github.com/groldsf/obsidian_check_plugin/issues/13).
+### Changed
+- Refactored the internal structure of the plugin's settings tab for better maintainability and easier addition of future options [#15](https://github.com/groldsf/obsidian_check_plugin/issues/15).
+- Remove old settings xOnlyMod
+
+
 ## [1.0.10] - 2025-04-12
 ### Fixed 
 - Fix bug [#10](https://github.com/groldsf/obsidian_check_plugin/issues/10).
