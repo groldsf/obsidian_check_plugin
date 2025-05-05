@@ -1,17 +1,11 @@
 import { Plugin, TFile } from "obsidian";
-import { CheckboxSyncPluginSettingTab } from "./CheckboxSyncPluginSettingTab";
 import { CheckboxUtils } from "./checkboxUtils";
-import FileStateHolder from "./FileStateHolder";
-import SyncController from "./SyncController";
-import { CheckboxSyncPluginSettings } from "./types";
-import { FileLoadEventHandler } from "./events/FileLoadEventHandler";
 import { FileChangeEventHandler } from "./events/FileChangeEventHandler";
-
-const DEFAULT_SETTINGS: CheckboxSyncPluginSettings = {
-  xOnlyMode: true,
-  enableAutomaticParentState: true,
-  enableAutomaticChildState: true,
-};
+import { FileLoadEventHandler } from "./events/FileLoadEventHandler";
+import FileStateHolder from "./FileStateHolder";
+import { CheckboxSyncPluginSettingTab } from "./ui/CheckboxSyncPluginSettingTab";
+import SyncController from "./SyncController";
+import { CheckboxSyncPluginSettings, DEFAULT_SETTINGS } from "./types";
 
 export default class CheckboxSyncPlugin extends Plugin {
   private _settings: CheckboxSyncPluginSettings;
@@ -47,12 +41,15 @@ export default class CheckboxSyncPlugin extends Plugin {
   async updateSettings(callback: (settings: CheckboxSyncPluginSettings) => void | Promise<void>) {
     await callback(this._settings);
     await this.saveData(this.settings);
-    //надо пересинхронизировать все файлы в кеше
-    const allFile = this.fileStateHolder.getAllFiles();
-    await Promise.all(
-      allFile.map(async (file: TFile) => {
-        await this.syncController.syncFile(file);
-      })
-    );
+
+    if (this.settings.enableAutomaticFileSync) {
+      //надо пересинхронизировать все файлы в кеше
+      const allFile = this.fileStateHolder.getAllFiles();
+      await Promise.all(
+        allFile.map(async (file: TFile) => {
+          await this.syncController.syncFile(file);
+        })
+      );
+    }
   }
 }

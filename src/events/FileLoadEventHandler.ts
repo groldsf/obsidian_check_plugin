@@ -24,10 +24,10 @@ export class FileLoadEventHandler {
     //запуск плагина при открытии файла
     this.plugin.registerEvent(
       this.app.workspace.on("file-open", async (file) => {
-        if (file) {
+        if (file && file.extension === "md") {
           console.log(`file-open ${file.path}`);
           const isUpdate = await this.fileStateHolder.initIfNeeded(file);
-          if (isUpdate) {
+          if (isUpdate && this.plugin.settings.enableAutomaticFileSync) {
             await this.syncController.syncFile(file);
           }
         }
@@ -38,9 +38,9 @@ export class FileLoadEventHandler {
       // console.log(`MarkdownPostProcessor "${ctx.sourcePath}"`);
       await this.markdownPostProcessorMutex.runExclusive(async () => {
         const file = this.app.vault.getAbstractFileByPath(ctx.sourcePath);
-        if (file instanceof TFile) {
+        if (file instanceof TFile && file.extension === "md") {
           const isUpdate = await this.fileStateHolder.initIfNeeded(file);
-          if (isUpdate) {
+          if (isUpdate && this.plugin.settings.enableAutomaticFileSync) {
             await this.syncController.syncFile(file);
           }
         }
@@ -49,9 +49,11 @@ export class FileLoadEventHandler {
 
     this.plugin.registerEvent(
       this.app.workspace.on('quick-preview', async (file: TFile, data: string) => {
-        const isUpdate = await this.fileStateHolder.initIfNeeded(file, data);
-        if (isUpdate) {
-          await this.syncController.syncFile(file);
+        if (file && file.extension === "md") {
+          const isUpdate = await this.fileStateHolder.initIfNeeded(file, data);
+          if (isUpdate && this.plugin.settings.enableAutomaticFileSync) {
+            await this.syncController.syncFile(file);
+          }
         }
       })
     );
@@ -78,21 +80,25 @@ export class FileLoadEventHandler {
     await this.findEmbedsRecursive(file, filesToInitialize);
 
     for (const fileToInit of filesToInitialize) {
-        try {
-            const isUpdateNeeded = await this.fileStateHolder.initIfNeeded(fileToInit);
-            // Синхронизируем только если инициализация это потребовала,
-            // ИЛИ если это основной файл, открытый в редакторе (на всякий случай)
-            if (isUpdateNeeded || (fileToInit === file && view.getMode() === 'source')) {
-                 // Если основной файл в редакторе, лучше вызвать syncEditor для него
-                 if (fileToInit === file && view.getMode() === 'source') {
-                    await this.syncController.syncEditor(view.editor, view);
-                 } else {
-                    await this.syncController.syncFile(fileToInit);
-                 }
-            }
-        } catch (error) {
-            console.error(`Error processing file ${fileToInit.path} during initial load:`, error);
+      try {
+        const isUpdateNeeded = await this.fileStateHolder.initIfNeeded(fileToInit);        
+        //skip if settings enableAutomaticFileSync === false
+        if(this.plugin.settings.enableAutomaticFileSync === false){
+          continue;
         }
+        // Синхронизируем только если инициализация это потребовала,
+        // ИЛИ если это основной файл, открытый в редакторе (на всякий случай)
+        if (isUpdateNeeded || (fileToInit === file && view.getMode() === 'source')) {
+          // Если основной файл в редакторе, лучше вызвать syncEditor для него
+          if (fileToInit === file && view.getMode() === 'source') {
+            await this.syncController.syncEditor(view.editor, view);
+          } else {
+            await this.syncController.syncFile(fileToInit);
+          }
+        }
+      } catch (error) {
+        console.error(`Error processing file ${fileToInit.path} during initial load:`, error);
+      }
     }
   }
 
@@ -102,16 +108,16 @@ export class FileLoadEventHandler {
     if (!cache?.embeds) return;
 
     for (const embed of cache.embeds) {
-        const embedFile = this.app.metadataCache.getFirstLinkpathDest(embed.link, file.path);
-        if (!embedFile) continue;
+      const embedFile = this.app.metadataCache.getFirstLinkpathDest(embed.link, file.path);
+      if (!embedFile) continue;
 
-        if (embedFile instanceof TFile && embedFile.extension === 'md') {
-            // Если файл еще не посещали, добавляем и ищем его внедрения
-            if (!visited.has(embedFile)) {
-                visited.add(embedFile);
-                await this.findEmbedsRecursive(embedFile, visited);
-            }
+      if (embedFile instanceof TFile && embedFile.extension === 'md') {
+        // Если файл еще не посещали, добавляем и ищем его внедрения
+        if (!visited.has(embedFile)) {
+          visited.add(embedFile);
+          await this.findEmbedsRecursive(embedFile, visited);
         }
+      }
     }
-}
+  }
 }

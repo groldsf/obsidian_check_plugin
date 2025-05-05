@@ -21,9 +21,11 @@ It automatically updates parent checkboxes based on their children's state, and 
 
 *   Automatically check/uncheck parent based on children state.
 *   Automatically check/uncheck children when parent state changes manually.
-*   Configurable synchronization.
+*   Configurable synchronization directions (upward/downward).
 *   Supports ordered and unordered lists.
 *   Respects list indentation for nested hierarchies.
+*   Flexible checkbox symbol interpretation (define checked/unchecked/ignored symbols).
+*   Option to disable automatic sync on file open.
 
 ## Quick Links
 

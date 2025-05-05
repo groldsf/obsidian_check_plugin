@@ -36,6 +36,12 @@ const config: Config = {
   // Limit the number of workers that run tests in parallel
   maxWorkers: 1, // <--- Задает последовательное выполнение
 
+  moduleNameMapper: {
+    // Этот паттерн говорит: если импорт начинается с 'src/',
+    // замени 'src/' на '<rootDir>/src/' при поиске файла.
+    '^src/(.*)$': '<rootDir>/src/$1',
+  },
+
 };
 
 export default config;

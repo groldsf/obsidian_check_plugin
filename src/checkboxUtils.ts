@@ -1,10 +1,12 @@
-import { CheckboxSyncPluginSettings } from "./types";
+import { CheckboxState, CheckboxSyncPluginSettings } from "./types";
 
 export interface CheckboxLineInfo {
   indent: number;
   marker: string;
   checkChar: string;
   checkboxCharPosition: number;
+  checkboxState: CheckboxState;
+  isChecked: boolean | undefined;
 }
 
 export class CheckboxUtils {
@@ -22,21 +24,37 @@ export class CheckboxUtils {
     const marker = match[2];
     const checkChar = match[3];
     const checkboxCharPosition = indent + marker.length + 2;
+    const checkboxState = this.getCheckboxState(checkChar);
+    let isChecked = checkboxState === CheckboxState.Ignore ? undefined : checkboxState === CheckboxState.Checked;
 
     return {
       indent,
       marker,
       checkChar,
-      checkboxCharPosition
+      checkboxCharPosition,
+      checkboxState,
+      isChecked
     };
   }
 
-  isCheckedSymbol(text: string): boolean {
-    return this.settings.xOnlyMode ? text === "x" : text !== " ";
+  getCheckboxState(text: string): CheckboxState {
+    if (this.settings.checkedSymbols.includes(text)) {
+      return CheckboxState.Checked;
+    }
+    if (this.settings.uncheckedSymbols.includes(text)) {
+      return CheckboxState.Unchecked;
+    }
+    if (this.settings.ignoreSymbols.includes(text)) {
+      return CheckboxState.Ignore;
+    }
+    return this.settings.unknownSymbolPolicy;
   }
 
   updateLineCheckboxStateWithInfo(line: string, shouldBeChecked: boolean, lineInfo: CheckboxLineInfo): string {
-    const newCheckChar = shouldBeChecked ? "x" : " ";
+    const checkedChar = this.settings.checkedSymbols.length > 0 ? this.settings.checkedSymbols[0] : 'x'; // 'x' как дефолт
+    const uncheckedChar = this.settings.uncheckedSymbols.length > 0 ? this.settings.uncheckedSymbols[0] : ' '; // ' ' как дефолт
+
+    const newCheckChar = shouldBeChecked ? checkedChar : uncheckedChar;
     const pos = lineInfo.checkboxCharPosition;
     if (pos >= 0 && pos < line.length) {
       return line.substring(0, pos) + newCheckChar + line.substring(pos + 1);
@@ -52,18 +70,36 @@ export class CheckboxUtils {
 
     const parentLineInfo = this.matchCheckboxLine(lines[parentLine]);
     if (!parentLineInfo) {
-      console.log(`checkbox not found in line ${parentLine}`)
+      console.warn(`checkbox not found in line ${parentLine}`)
       return text;
     }
 
-    const isChecked = this.isCheckedSymbol(parentLineInfo.checkChar);
+    if (parentLineInfo.checkboxState === CheckboxState.Ignore) {
+      return text;
+    }
+    let parentIsChecked = parentLineInfo.isChecked!;
+
     let j = parentLine + 1;
 
     while (j < lines.length) {
-      const childLineInfo = this.matchCheckboxLine(lines[j]);
+      const childText = lines[j];
+      const childLineInfo = this.matchCheckboxLine(childText);
       if (!childLineInfo || childLineInfo.indent <= parentLineInfo.indent) break;
-      lines[j] = this.updateLineCheckboxStateWithInfo(lines[j], isChecked, childLineInfo);
-      j++;
+
+      if (childLineInfo.checkboxState !== CheckboxState.Ignore) {
+        lines[j] = this.updateLineCheckboxStateWithInfo(lines[j], parentIsChecked, childLineInfo);
+        j++;
+      } else {
+        //skip children ignore node
+        j++;
+        while (j < lines.length) {
+          const subChildLineInfo = this.matchCheckboxLine(lines[j]);
+          if (!subChildLineInfo || subChildLineInfo.indent <= childLineInfo.indent) {
+            break;
+          };
+          j++;
+        }
+      }
     }
     return lines.join("\n");
   }
@@ -75,24 +111,37 @@ export class CheckboxUtils {
       const parentLineInfo = this.matchCheckboxLine(lines[i]);
       if (!parentLineInfo) continue;
 
-      const isChecked = this.isCheckedSymbol(parentLineInfo.checkChar);
+      if (parentLineInfo.checkboxState === CheckboxState.Ignore) {
+        continue;
+      }
+      const parentIsChecked = parentLineInfo.isChecked!;
       let allChildrenChecked = true;
       let hasChildren = false;
-      let j = i + 1;
 
-      while (j < lines.length) {
+      for (let j = i + 1; j < lines.length; j++) {
         const childLineInfo = this.matchCheckboxLine(lines[j]);
+        
         if (!childLineInfo || childLineInfo.indent <= parentLineInfo.indent) break;
+
+        if (childLineInfo.checkboxState === CheckboxState.Ignore) {
+          while (j + 1 < lines.length) {
+            const subChildLineInfo = this.matchCheckboxLine(lines[j + 1]);
+            if (!subChildLineInfo || subChildLineInfo.indent <= childLineInfo.indent) {
+              break;
+            };
+            j++;
+          }
+          continue;
+        }
         hasChildren = true;
-        const childrenIsChecked = this.isCheckedSymbol(childLineInfo.checkChar);
+        const childrenIsChecked = childLineInfo.isChecked!;
         if (!childrenIsChecked) {
           allChildrenChecked = false;
           break;
         }
-        j++;
       }
 
-      if (hasChildren && isChecked !== allChildrenChecked) {
+      if (hasChildren && parentIsChecked !== allChildrenChecked) {
         lines[i] = this.updateLineCheckboxStateWithInfo(lines[i], allChildrenChecked, parentLineInfo);
       }
     }
@@ -137,7 +186,7 @@ export class CheckboxUtils {
       lineInfoBefore && lineInfoAfter &&
       lineInfoBefore.indent === lineInfoAfter.indent &&
       lineInfoBefore.marker === lineInfoAfter.marker &&
-      lineInfoBefore.checkChar !== lineInfoAfter.checkChar
+      lineInfoBefore.checkboxState !== lineInfoAfter.checkboxState
     ) {
       return this.propagateStateToChildren(text, diffIndexes[0]);
     }

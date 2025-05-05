@@ -1,673 +1,774 @@
-// checkboxUtils.test.ts
-import { CheckboxUtils } from '../src/checkboxUtils';
-import { CheckboxSyncPluginSettings } from '../src/types'; // Предполагаем, что типы в types.ts
+import { CheckboxUtils } from '../src/checkboxUtils'; // Путь к вашему файлу
+import { CheckboxState, CheckboxSyncPluginSettings, DEFAULT_SETTINGS } from '../src/types'; // Путь к вашему файлу типов
 
-// --- Mock Settings ---
-const defaultSettings: Readonly<CheckboxSyncPluginSettings> = {
-  xOnlyMode: false, // По умолчанию: любой не-пробел считается 'checked'
-  enableAutomaticParentState: true,
-  enableAutomaticChildState: true,
+// Вспомогательная функция для создания настроек с переопределениями
+const createSettings = (overrides: Partial<CheckboxSyncPluginSettings> = {}): Readonly<CheckboxSyncPluginSettings> => {
+  return { ...DEFAULT_SETTINGS, ...overrides } as Readonly<CheckboxSyncPluginSettings>;
 };
 
-const xOnlySettings: Readonly<CheckboxSyncPluginSettings> = {
-  xOnlyMode: true, // Только 'x' считается 'checked'
-  enableAutomaticParentState: true,
-  enableAutomaticChildState: true,
-};
-
-const settingsParentSyncDisabled: Readonly<CheckboxSyncPluginSettings> = {
-  xOnlyMode: false, // или true, если нужно тестировать комбинацию
-  enableAutomaticParentState: false, // Родитель НЕ обновляется от детей
-  enableAutomaticChildState: true,
-};
-
-const settingsChildSyncDisabled: Readonly<CheckboxSyncPluginSettings> = {
-  xOnlyMode: false,
-  enableAutomaticParentState: true, // Оставим true для этого варианта
-  enableAutomaticChildState: false, // Дети НЕ обновляются от родителя
-};
-
-// --- Test Suite ---
 describe('CheckboxUtils', () => {
-  let utilsDefault: CheckboxUtils;
-  let utilsXOnly: CheckboxUtils;
-  let utilsParentSyncDisabled: CheckboxUtils;
-  let utilsChildSyncDisabled: CheckboxUtils
+  let checkboxUtils: CheckboxUtils;
+  let settings: Readonly<CheckboxSyncPluginSettings>;
 
   beforeEach(() => {
-    // Создаем новые экземпляры перед каждым тестом для изоляции
-    utilsDefault = new CheckboxUtils(defaultSettings);
-    utilsXOnly = new CheckboxUtils(xOnlySettings);
-    utilsParentSyncDisabled = new CheckboxUtils(settingsParentSyncDisabled);
-    utilsChildSyncDisabled = new CheckboxUtils(settingsChildSyncDisabled);
+    // Используем настройки по умолчанию для большинства тестов
+    settings = createSettings();
+    checkboxUtils = new CheckboxUtils(settings);
   });
 
-  // --- matchCheckboxLine ---
+  // --- Тесты для matchCheckboxLine ---
   describe('matchCheckboxLine', () => {
-    it.each([
-      // Простые случаи
-      ['- [ ] Text', { indent: 0, marker: '-', checkChar: ' ', checkboxCharPosition: 3 }],
-      ['* [x] Task', { indent: 0, marker: '*', checkChar: 'x', checkboxCharPosition: 3 }],
-      ['+ [?] Query', { indent: 0, marker: '+', checkChar: '?', checkboxCharPosition: 3 }],
-      ['1. [!] Num', { indent: 0, marker: '1.', checkChar: '!', checkboxCharPosition: 4 }],
-      // С отступами
-      ['  - [ ] Indented', { indent: 2, marker: '-', checkChar: ' ', checkboxCharPosition: 5 }],
-      ['\t* [x] Tab Indent', { indent: 1, marker: '*', checkChar: 'x', checkboxCharPosition: 4 }], // Зависит от размера таба, Jest может считать его 1
-      ['    10. [A] Deep', { indent: 4, marker: '10.', checkChar: 'A', checkboxCharPosition: 9 }],
-    ])('should match valid checkbox line: %s', (line, expected) => {
-      const result = utilsDefault.matchCheckboxLine(line);
-      expect(result).toEqual(expected);
+    it('should match standard unchecked checkbox', () => {
+      const line = '- [ ] Task';
+      const result = checkboxUtils.matchCheckboxLine(line);
+      expect(result).not.toBeNull();
+      expect(result).toEqual({
+        indent: 0,
+        marker: '-',
+        checkChar: ' ',
+        checkboxCharPosition: 3,
+        checkboxState: CheckboxState.Unchecked,
+        isChecked: false,
+      });
     });
 
-    it.each([
-      'Not a list item',
-      '- Just text',
-      '-[] No space',
-      '- [No Char]',
-      '- [ ]', // Нет пробела после скобки, как требует регекс \s
-      '  Non-checkbox line',
-      '-[ ] No space before marker',
-      '1.[ ] No space after numbered marker',
-      '- ] Missing opening bracket',
-      '* [x Missing closing bracket',
-    ])('should return null for invalid lines: %s', (line) => {
-      expect(utilsDefault.matchCheckboxLine(line)).toBeNull();
+    it('should match standard checked checkbox', () => {
+      const line = '* [x] Done';
+      const result = checkboxUtils.matchCheckboxLine(line);
+      expect(result).not.toBeNull();
+      expect(result).toEqual({
+        indent: 0,
+        marker: '*',
+        checkChar: 'x',
+        checkboxCharPosition: 3,
+        checkboxState: CheckboxState.Checked,
+        isChecked: true,
+      });
     });
 
-    it('should require a space after the closing bracket', () => {
-      expect(utilsDefault.matchCheckboxLine('- [ ]')).toBeNull(); // Missing trailing space
-      expect(utilsDefault.matchCheckboxLine('- [ ] ')).not.toBeNull(); // Has trailing space
+    it('should match checkbox with indentation', () => {
+      const line = '  + [x] Indented Task';
+      const result = checkboxUtils.matchCheckboxLine(line);
+      expect(result).not.toBeNull();
+      expect(result).toEqual({
+        indent: 2,
+        marker: '+',
+        checkChar: 'x',
+        checkboxCharPosition: 5, // 2 spaces + 1 marker + 1 space + 1 [ = 5
+        checkboxState: CheckboxState.Checked,
+        isChecked: true,
+      });
     });
 
-    it.each([' ', 'x', '-', '?', '!'])('should correctly parse the checkChar', (state) => {
-      const lineInfo = utilsDefault.matchCheckboxLine(`- [${state}] Task`);
-      expect(lineInfo).not.toBeNull();
-      expect(lineInfo?.checkChar).toBe(state);
+    it('should match numbered list checkbox', () => {
+      const line = '1. [ ] Numbered';
+      const result = checkboxUtils.matchCheckboxLine(line);
+      expect(result).not.toBeNull();
+      expect(result).toEqual({
+        indent: 0,
+        marker: '1.',
+        checkChar: ' ',
+        checkboxCharPosition: 4, // 2 marker + 1 space + 1 [ = 4
+        checkboxState: CheckboxState.Unchecked,
+        isChecked: false,
+      });
+    });
+
+    it('should match checkbox with multi-digit numbered list', () => {
+      const line = '10. [x] Double Digit';
+      const result = checkboxUtils.matchCheckboxLine(line);
+      expect(result).not.toBeNull();
+      expect(result).toEqual({
+        indent: 0,
+        marker: '10.',
+        checkChar: 'x',
+        checkboxCharPosition: 5, // 3 marker + 1 space + 1 [ = 5
+        checkboxState: CheckboxState.Checked,
+        isChecked: true,
+      });
+    });
+
+    it('should return null for lines without checkbox format', () => {
+      expect(checkboxUtils.matchCheckboxLine('Just text')).toBeNull();
+      expect(checkboxUtils.matchCheckboxLine('- Not a checkbox')).toBeNull();
+      expect(checkboxUtils.matchCheckboxLine('- [ ]')).toBeNull(); // No space after ]
+      expect(checkboxUtils.matchCheckboxLine('- [] ')).toBeNull(); // No char inside
+      expect(checkboxUtils.matchCheckboxLine('[ ] Task')).toBeNull(); // No marker
+      expect(checkboxUtils.matchCheckboxLine('-[ ] Task')).toBeNull(); // No space after marker
+    });
+
+    it('should match custom symbols based on settings', () => {
+      const customSettings = createSettings({
+        checkedSymbols: ['X', 'V'],
+        uncheckedSymbols: ['O', '-'],
+        ignoreSymbols: ['~'],
+      });
+      const customUtils = new CheckboxUtils(customSettings);
+
+      const checkedLine = '- [V] Custom Checked';
+      const checkedResult = customUtils.matchCheckboxLine(checkedLine);
+      expect(checkedResult?.checkboxState).toBe(CheckboxState.Checked);
+      expect(checkedResult?.isChecked).toBe(true);
+      expect(checkedResult?.checkChar).toBe('V');
+
+      const uncheckedLine = '* [O] Custom Unchecked';
+      const uncheckedResult = customUtils.matchCheckboxLine(uncheckedLine);
+      expect(uncheckedResult?.checkboxState).toBe(CheckboxState.Unchecked);
+      expect(uncheckedResult?.isChecked).toBe(false);
+      expect(uncheckedResult?.checkChar).toBe('O');
+
+      const ignoredLine = '+ [~] Custom Ignored';
+      const ignoredResult = customUtils.matchCheckboxLine(ignoredLine);
+      expect(ignoredResult?.checkboxState).toBe(CheckboxState.Ignore);
+      expect(ignoredResult?.isChecked).toBeUndefined();
+      expect(ignoredResult?.checkChar).toBe('~');
     });
   });
 
-  // --- isCheckedSymbol ---
-  describe('isCheckedSymbol', () => {
-    // Default mode (xOnlyMode: false)
-    it('should check symbols correctly in default mode', () => {
-      expect(utilsDefault.isCheckedSymbol('x')).toBe(true);
-      expect(utilsDefault.isCheckedSymbol('X')).toBe(true);
-      expect(utilsDefault.isCheckedSymbol('/')).toBe(true);
-      expect(utilsDefault.isCheckedSymbol('-')).toBe(true);
-      expect(utilsDefault.isCheckedSymbol('?')).toBe(true);
-      expect(utilsDefault.isCheckedSymbol(' ')).toBe(false); // Только пробел - не отмечено
+  // --- Тесты для getCheckboxState ---
+  describe('getCheckboxState', () => {
+    it('should return Checked for symbols in checkedSymbols', () => {
+      const customSettings = createSettings({ checkedSymbols: ['x', 'X', '✓'] });
+      const customUtils = new CheckboxUtils(customSettings);
+      expect(customUtils.getCheckboxState('x')).toBe(CheckboxState.Checked);
+      expect(customUtils.getCheckboxState('X')).toBe(CheckboxState.Checked);
+      expect(customUtils.getCheckboxState('✓')).toBe(CheckboxState.Checked);
     });
 
-    // xOnly mode (xOnlyMode: true)
-    it('should check symbols correctly in xOnly mode', () => {
-      expect(utilsXOnly.isCheckedSymbol('x')).toBe(true); // Только 'x' - отмечено
-      expect(utilsXOnly.isCheckedSymbol('X')).toBe(false);
-      expect(utilsXOnly.isCheckedSymbol('/')).toBe(false);
-      expect(utilsXOnly.isCheckedSymbol('-')).toBe(false);
-      expect(utilsXOnly.isCheckedSymbol('?')).toBe(false);
-      expect(utilsXOnly.isCheckedSymbol(' ')).toBe(false);
+    it('should return Unchecked for symbols in uncheckedSymbols', () => {
+      const customSettings = createSettings({ uncheckedSymbols: [' ', '_', '?'] });
+      const customUtils = new CheckboxUtils(customSettings);
+      expect(customUtils.getCheckboxState(' ')).toBe(CheckboxState.Unchecked);
+      expect(customUtils.getCheckboxState('_')).toBe(CheckboxState.Unchecked);
+      expect(customUtils.getCheckboxState('?')).toBe(CheckboxState.Unchecked);
+    });
+
+    it('should return Ignore for symbols in ignoreSymbols', () => {
+      const customSettings = createSettings({ ignoreSymbols: ['-', '~', '>'] });
+      const customUtils = new CheckboxUtils(customSettings);
+      expect(customUtils.getCheckboxState('-')).toBe(CheckboxState.Ignore);
+      expect(customUtils.getCheckboxState('~')).toBe(CheckboxState.Ignore);
+      expect(customUtils.getCheckboxState('>')).toBe(CheckboxState.Ignore);
+    });
+
+    it('should use unknownSymbolPolicy for symbols not in any list', () => {
+      const settingsChecked = createSettings({ unknownSymbolPolicy: CheckboxState.Checked });
+      const utilsChecked = new CheckboxUtils(settingsChecked);
+      expect(utilsChecked.getCheckboxState('?')).toBe(CheckboxState.Checked);
+
+      const settingsUnchecked = createSettings({ unknownSymbolPolicy: CheckboxState.Unchecked });
+      const utilsUnchecked = new CheckboxUtils(settingsUnchecked);
+      expect(utilsUnchecked.getCheckboxState('?')).toBe(CheckboxState.Unchecked);
+
+      const settingsIgnore = createSettings({ unknownSymbolPolicy: CheckboxState.Ignore });
+      const utilsIgnore = new CheckboxUtils(settingsIgnore);
+      expect(utilsIgnore.getCheckboxState('?')).toBe(CheckboxState.Ignore);
     });
   });
 
-  // --- updateLineCheckboxStateWithInfo ---
+  // --- Тесты для updateLineCheckboxStateWithInfo ---
   describe('updateLineCheckboxStateWithInfo', () => {
-
-    it('should check an unchecked box', () => {
-      const uncheckedLine = '  - [ ] Task';
-      const uncheckedLineInfo = utilsDefault.matchCheckboxLine(uncheckedLine)!;
-      const updatedLine = utilsDefault.updateLineCheckboxStateWithInfo(uncheckedLine, true, uncheckedLineInfo);
-      expect(updatedLine).toBe('  - [x] Task');
+    it('should update checkbox state from unchecked to checked', () => {
+      const line = '- [ ] Task';
+      const lineInfo = checkboxUtils.matchCheckboxLine(line)!; // Assume valid line
+      const updatedLine = checkboxUtils.updateLineCheckboxStateWithInfo(line, true, lineInfo);
+      // Uses the first symbol from settings.checkedSymbols ('x' by default)
+      expect(updatedLine).toBe('- [x] Task');
     });
 
-    it('should uncheck a checked box', () => {
-      const checkedLine = '  - [x] Task';
-      const checkedLineInfo = utilsDefault.matchCheckboxLine(checkedLine)!;
-      const updatedLine = utilsDefault.updateLineCheckboxStateWithInfo(checkedLine, false, checkedLineInfo);
-      expect(updatedLine).toBe('  - [ ] Task');
+    it('should update checkbox state from checked to unchecked', () => {
+      const line = '* [x] Done';
+      const lineInfo = checkboxUtils.matchCheckboxLine(line)!;
+      const updatedLine = checkboxUtils.updateLineCheckboxStateWithInfo(line, false, lineInfo);
+      // Uses the first symbol from settings.uncheckedSymbols (' ' by default)
+      expect(updatedLine).toBe('* [ ] Done');
     });
 
-    it('should handle other initial check chars', () => {
-      const otherLine = '  - [?] Task';
-      const otherLineInfo = utilsDefault.matchCheckboxLine(otherLine)!;
-      expect(utilsDefault.updateLineCheckboxStateWithInfo(otherLine, true, otherLineInfo)).toBe('  - [x] Task');
-      expect(utilsDefault.updateLineCheckboxStateWithInfo(otherLine, false, otherLineInfo)).toBe('  - [ ] Task');
+    it('should use first symbol from settings for update', () => {
+      const customSettings = createSettings({ checkedSymbols: ['V', 'X'], uncheckedSymbols: ['O', ' '] });
+      const customUtils = new CheckboxUtils(customSettings);
+
+      const lineToCheck = '- [O] Task';
+      const infoToCheck = customUtils.matchCheckboxLine(lineToCheck)!;
+      const updatedToCheck = customUtils.updateLineCheckboxStateWithInfo(lineToCheck, true, infoToCheck);
+      expect(updatedToCheck).toBe('- [V] Task'); // Should use 'V'
+
+      const lineToUncheck = '* [V] Done';
+      const infoToUncheck = customUtils.matchCheckboxLine(lineToUncheck)!;
+      const updatedToUncheck = customUtils.updateLineCheckboxStateWithInfo(lineToUncheck, false, infoToUncheck);
+      expect(updatedToUncheck).toBe('* [O] Done'); // Should use 'O'
     });
 
-    it('should return original line if position is invalid (and warn)', () => {
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => { }); // Подавить вывод в консоль
-      const uncheckedLine = '  - [ ] Task';
-      const uncheckedLineInfo = utilsDefault.matchCheckboxLine(uncheckedLine)!;
-      const invalidInfo = { ...uncheckedLineInfo, checkboxCharPosition: 100 };
-      const result = utilsDefault.updateLineCheckboxStateWithInfo(uncheckedLine, true, invalidInfo);
-      expect(result).toBe(uncheckedLine);
-      expect(warnSpy).toHaveBeenCalled();
+    it('should handle indented lines correctly', () => {
+      const line = '  - [ ] Indented';
+      const lineInfo = checkboxUtils.matchCheckboxLine(line)!;
+      const updatedLine = checkboxUtils.updateLineCheckboxStateWithInfo(line, true, lineInfo);
+      expect(updatedLine).toBe('  - [x] Indented');
+    });
+
+    it('should return original line if position is invalid (simulated)', () => {
+      const line = '- [ ] Task';
+      const lineInfo = checkboxUtils.matchCheckboxLine(line)!;
+      // Simulate invalid position
+      const invalidInfo = { ...lineInfo, checkboxCharPosition: 100 };
+      const updatedLine = checkboxUtils.updateLineCheckboxStateWithInfo(line, true, invalidInfo);
+      expect(updatedLine).toBe(line); // Should not change
+    });
+
+    it('should use default checked symbol "x" if checkedSymbols setting is empty', () => {
+      // Создаем настройки с пустым списком checkedSymbols
+      const customSettings = createSettings({ checkedSymbols: [] });
+      const customUtils = new CheckboxUtils(customSettings);
+      const line = '- [ ] Task';
+      const lineInfo = customUtils.matchCheckboxLine(line)!;
+
+      // Пытаемся отметить чекбокс
+      const updatedLine = customUtils.updateLineCheckboxStateWithInfo(line, true, lineInfo);
+      expect(updatedLine).toBe('- [x] Task'); // Ожидаем дефолтный 'x'
+    });
+
+    it('should use default unchecked symbol " " if uncheckedSymbols setting is empty', () => {
+      // Создаем настройки с пустым списком uncheckedSymbols
+      const customSettings = createSettings({ uncheckedSymbols: [] });
+      const customUtils = new CheckboxUtils(customSettings);
+      const line = '- [x] Task'; // Используем 'x' из дефолтных checkedSymbols
+      const lineInfo = customUtils.matchCheckboxLine(line)!;
+
+      // Пытаемся снять отметку
+      const updatedLine = customUtils.updateLineCheckboxStateWithInfo(line, false, lineInfo);
+      expect(updatedLine).toBe('- [ ] Task'); // Ожидаем дефолтный ' ' (пробел)
+    });
+
+    // Усиленный тест для невалидной позиции (с проверкой console.warn)
+    it('should return original line and warn if position is invalid', () => {
+      const line = '- [ ] Task';
+      const lineInfo = checkboxUtils.matchCheckboxLine(line)!;
+      // Мокаем console.warn
+      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => { });
+
+      // Simulate invalid position
+      const invalidInfo = { ...lineInfo, checkboxCharPosition: -1 }; // Невалидная позиция
+      const updatedLineNegative = checkboxUtils.updateLineCheckboxStateWithInfo(line, true, invalidInfo);
+      expect(updatedLineNegative).toBe(line); // Должен вернуть оригинальную строку
+      expect(warnSpy).toHaveBeenCalledTimes(1); // Проверяем вызов warn
+
+      const invalidInfo2 = { ...lineInfo, checkboxCharPosition: 100 }; // Другая невалидная позиция
+      const updatedLineOob = checkboxUtils.updateLineCheckboxStateWithInfo(line, true, invalidInfo2);
+      expect(updatedLineOob).toBe(line); // Должен вернуть оригинальную строку
+      expect(warnSpy).toHaveBeenCalledTimes(2); // Проверяем вызов warn еще раз
+
+      // Восстанавливаем оригинальную функцию console.warn
       warnSpy.mockRestore();
     });
   });
 
-  // --- propagateStateToChildren ---
+  // --- Тесты для propagateStateToChildren ---
   describe('propagateStateToChildren', () => {
-    const text = [
-      '- [ ] Parent 1', // 0
-      '  - [ ] Child 1.1', // 1
-      '  - [x] Child 1.2', // 2
-      '    - [ ] Grandchild 1.2.1', // 3
-      '- [x] Parent 2', // 4
-      '  - [x] Child 2.1', // 5
-    ].join('\n');
+    const setupUtils = (customSettings?: Partial<CheckboxSyncPluginSettings>) => {
+      return new CheckboxUtils(createSettings(customSettings));
+    }
 
     it('should check children when parent is checked', () => {
-      // Имитируем проверку Parent 1 (индекс 0)
-      const lines = text.split('\n');
-      lines[0] = '- [x] Parent 1'; // Manually check parent for the test input
-      const initialTextModified = lines.join('\n');
-
-      const result = utilsDefault.propagateStateToChildren(initialTextModified, 0);
-      const expected = [
-        '- [x] Parent 1', // Checked
-        '  - [x] Child 1.1', // Updated
-        '  - [x] Child 1.2', // Updated
-        '    - [x] Grandchild 1.2.1', // Updated
-        '- [x] Parent 2', // Unchanged
-        '  - [x] Child 2.1', // Unchanged
+      const text = [
+        '- [x] Parent', // line 0
+        '  - [ ] Child 1',
+        '    - [ ] Grandchild',
+        '  - [ ] Child 2',
+        '- [ ] Sibling',
       ].join('\n');
-      expect(result).toBe(expected);
+      const expected = [
+        '- [x] Parent',
+        '  - [x] Child 1',
+        '    - [x] Grandchild',
+        '  - [x] Child 2',
+        '- [ ] Sibling', // Sibling should not change
+      ].join('\n');
+      expect(checkboxUtils.propagateStateToChildren(text, 0)).toBe(expected);
     });
 
     it('should uncheck children when parent is unchecked', () => {
-      // Имитируем снятие отметки с Parent 2 (индекс 4)
-      const lines = text.split('\n');
-      lines[4] = '- [ ] Parent 2'; // Manually uncheck parent for the test input
-      const initialTextModified = lines.join('\n');
-
-      const result = utilsDefault.propagateStateToChildren(initialTextModified, 4);
+      const text = [
+        '- [ ] Parent', // line 0
+        '  - [x] Child 1',
+        '    - [x] Grandchild',
+        '  - [ ] Child 2', // Already unchecked
+        '- [x] Sibling',
+      ].join('\n');
       const expected = [
-        '- [ ] Parent 1', // Unchanged
-        '  - [ ] Child 1.1', // Unchanged
-        '  - [x] Child 1.2', // Unchanged
-        '    - [ ] Grandchild 1.2.1', // Unchanged
-        '- [ ] Parent 2', // Unchecked
-        '  - [ ] Child 2.1', // Updated
+        '- [ ] Parent',
+        '  - [ ] Child 1',
+        '    - [ ] Grandchild',
+        '  - [ ] Child 2',
+        '- [x] Sibling', // Sibling should not change
       ].join('\n');
-      expect(result).toBe(expected);
+      expect(checkboxUtils.propagateStateToChildren(text, 0)).toBe(expected);
     });
 
-    it('should do nothing if the target line is not a checkbox', () => {
-      const textWithNonCheckbox = [
-        '# Header',
-        '- [ ] Item 1'
+    it('should stop propagation at siblings or less indented lines', () => {
+      const text = [
+        '  - [x] Parent', // line 0
+        '    - [ ] Child',
+        '  - [ ] Sibling', // Same indent level
+        '- [ ] Less Indented',
       ].join('\n');
-      const result = utilsDefault.propagateStateToChildren(textWithNonCheckbox, 0);
-      expect(result).toBe(textWithNonCheckbox);
+      const expected = [
+        '  - [x] Parent',
+        '    - [x] Child', // Changed
+        '  - [ ] Sibling', // Not changed
+        '- [ ] Less Indented', // Not changed
+      ].join('\n');
+      expect(checkboxUtils.propagateStateToChildren(text, 0)).toBe(expected);
     });
 
-    it('should stop only when indent is less than or equal to the original parent', () => {
-      const textSibling = [
-        '- [ ] Parent',       // 0, indent 0
-        '  - [ ] Child 1',    // 1, indent 2
-        '  - [ ] Sibling C1', // 2, indent 2 (still > 0)
-        '- [ ] Parent 2'      // 3, indent 0 (<= 0, stop here)
+    it('should skip ignored children and their subtrees', () => {
+      const utils = setupUtils({ ignoreSymbols: ['~'] });
+      const text = [
+        '- [x] Parent',         // 0
+        '  - [ ] Child 1',      // 1
+        '  - [~] Ignored Child',// 2 (ignore)
+        '    - [ ] Skipped GC', // 3 (skipped because parent ignored)
+        '  - [ ] Child 2',      // 4
       ].join('\n');
-      const lines = textSibling.split('\n');
-      lines[0] = '- [x] Parent'; // Make parent checked
-      const modifiedText = lines.join('\n');
-      const result = utilsDefault.propagateStateToChildren(modifiedText, 0);
       const expected = [
         '- [x] Parent',
-        '  - [x] Child 1',    // Changed (indent 2 > 0)
-        '  - [x] Sibling C1', // <<-- ALSO Changed (indent 2 > 0)
-        '- [ ] Parent 2'      // Unchanged (indent 0 <= 0)
+        '  - [x] Child 1',      // Changed
+        '  - [~] Ignored Child',// Unchanged
+        '    - [ ] Skipped GC', // Unchanged
+        '  - [x] Child 2',      // Changed
       ].join('\n');
-      expect(result).toBe(expected); // Проверяем обновленное ожидание
+      expect(utils.propagateStateToChildren(text, 0)).toBe(expected);
+    });
+
+    it('should do nothing if the parent line is not a checkbox', () => {
+      const text = [
+        'Parent Line',
+        '  - [ ] Child',
+      ].join('\n');
+      expect(checkboxUtils.propagateStateToChildren(text, 0)).toBe(text);
+    });
+
+    it('should do nothing if the parent checkbox is ignored', () => {
+      const utils = setupUtils({ ignoreSymbols: ['~'] });
+      const text = [
+        '- [~] Ignored Parent', // 0
+        '  - [ ] Child',
+      ].join('\n');
+      expect(utils.propagateStateToChildren(text, 0)).toBe(text);
     });
   });
 
-  // --- propagateStateFromChildren ---
+  // --- Тесты для propagateStateFromChildren ---
   describe('propagateStateFromChildren', () => {
+    const setupUtils = (customSettings?: Partial<CheckboxSyncPluginSettings>) => {
+      return new CheckboxUtils(createSettings(customSettings));
+    }
+
     it('should check parent if all children are checked', () => {
       const text = [
-        '- [ ] Parent', // Should become [x]
+        '- [ ] Parent', // line 0
         '  - [x] Child 1',
         '  - [x] Child 2',
-        '    - [x] Grandchild 2.1', // Needs to be checked too
+        '    - [x] Grandchild', // Needs parent (Child 2) to be checked first
       ].join('\n');
-      const result = utilsDefault.propagateStateFromChildren(text);
-      const expected = [
-        '- [x] Parent', // Updated
+      // Expected: Grandchild affects Child 2 -> Child 2 and Child 1 affect Parent
+      const expectedPass1 = [ // After processing Grandchild and Child 2
+        '- [ ] Parent',
+        '  - [x] Child 1',
+        '  - [x] Child 2', // Stays checked
+        '    - [x] Grandchild',
+      ].join('\n');
+      const expectedPass2 = [ // After processing Child 1 and Parent
+        '- [x] Parent', // Changes to checked
         '  - [x] Child 1',
         '  - [x] Child 2',
-        '    - [x] Grandchild 2.1',
+        '    - [x] Grandchild',
       ].join('\n');
-      expect(result).toBe(expected);
+      // Since it processes bottom-up, Child 2 should already be evaluated correctly
+      expect(checkboxUtils.propagateStateFromChildren(text)).toBe(expectedPass2);
     });
 
     it('should uncheck parent if any child is unchecked', () => {
       const text = [
-        '- [x] Parent', // Should become [ ]
+        '- [x] Parent', // line 0
         '  - [x] Child 1',
-        '  - [ ] Child 2', // This one makes parent unchecked
+        '  - [ ] Child 2', // This one makes the parent unchecked
+        '    - [ ] Grandchild',
       ].join('\n');
-      const result = utilsDefault.propagateStateFromChildren(text);
       const expected = [
-        '- [ ] Parent', // Updated
+        '- [ ] Parent', // Changes to unchecked
         '  - [x] Child 1',
         '  - [ ] Child 2',
+        '    - [ ] Grandchild',
       ].join('\n');
-      expect(result).toBe(expected);
+      expect(checkboxUtils.propagateStateFromChildren(text)).toBe(expected);
     });
 
-    it('should handle nested propagation', () => {
+    it('should handle nested updates correctly (bottom-up)', () => {
       const text = [
-        '- [ ] Grandparent', // Should become [ ]
-        '  - [x] Parent 1', // Should become [ ]
-        '    - [x] Child 1.1',
-        '    - [ ] Child 1.2', // Makes Parent 1 unchecked
-        '  - [x] Parent 2', // Stays checked
-        '    - [x] Child 2.1',
+        '- [ ] Grandparent',  // 0
+        '  - [ ] Parent 1',   // 1
+        '    - [x] Child 1.1',// 2
+        '    - [x] Child 1.2',// 3
+        '  - [x] Parent 2',   // 4
+        '    - [ ] Child 2.1',// 5 (Makes Parent 2 unchecked)
       ].join('\n');
-      const result = utilsDefault.propagateStateFromChildren(text);
       const expected = [
-        '- [ ] Grandparent', // Updated (because Parent 1 is now [ ])
-        '  - [ ] Parent 1', // Updated
+        '- [ ] Grandparent', // Becomes unchecked (because Parent 2 becomes unchecked)
+        '  - [x] Parent 1',  // Becomes checked (Child 1.1, 1.2 are checked)
         '    - [x] Child 1.1',
-        '    - [ ] Child 1.2',
-        '  - [x] Parent 2',
-        '    - [x] Child 2.1',
+        '    - [x] Child 1.2',
+        '  - [ ] Parent 2',  // Becomes unchecked (Child 2.1 is unchecked)
+        '    - [ ] Child 2.1',
       ].join('\n');
-      expect(result).toBe(expected);
+      expect(checkboxUtils.propagateStateFromChildren(text)).toBe(expected);
     });
 
-    it('should not change parent state if it has no children', () => {
+    it('should not change parent state if it has no relevant children', () => {
       const text = [
-        '- [ ] Parent No Children',
-        '- [x] Parent No Children Checked',
-        '  Some other line',
+        '- [ ] Parent',
+        'Sibling', // Not a child checkbox
+        '  Not indented correctly',
       ].join('\n');
-      const result = utilsDefault.propagateStateFromChildren(text);
-      expect(result).toBe(text); // No changes expected
+      expect(checkboxUtils.propagateStateFromChildren(text)).toBe(text);
     });
 
-    it('should work correctly with xOnlyMode', () => {
+    it('should ignore non-checkbox lines when determining parent state', () => {
       const text = [
-        '- [ ] Parent', // Should become [x] in xOnly mode
+        '- [ ] Parent',
         '  - [x] Child 1',
-        '  - [x] Child 2'
+        '  Just text',
+        '  - [x] Child 2',
       ].join('\n');
-      const result = utilsXOnly.propagateStateFromChildren(text);
-      expect(result).toContain('- [x] Parent'); // Parent checked
+      const expected = [
+        '- [x] Parent', // Should become checked
+        '  - [x] Child 1',
+        '  Just text',
+        '  - [x] Child 2',
+      ].join('\n');
+      expect(checkboxUtils.propagateStateFromChildren(text)).toBe(expected);
+    });
 
+    it('should skip ignored children when determining parent state', () => {
+      const utils = setupUtils({ ignoreSymbols: ['~'] });
+      const text = [
+        '- [ ] Parent',         // 0
+        '  - [x] Child 1',      // 1
+        '  - [~] Ignored Child',// 2 (skipped)
+        '    - [ ] Skipped GC', // 3 (doesn't affect parent)
+        '  - [x] Child 2',      // 4
+      ].join('\n');
+      const expected = [
+        '- [x] Parent', // Becomes checked (based on Child 1 and Child 2 only)
+        '  - [x] Child 1',
+        '  - [~] Ignored Child',
+        '    - [ ] Skipped GC',
+        '  - [x] Child 2',
+      ].join('\n');
+      expect(utils.propagateStateFromChildren(text)).toBe(expected);
+    });
+
+    it('should not change parent state if all direct children are ignored', () => {
+      const utils = setupUtils({ ignoreSymbols: ['~'] });
+      const text = [
+        '- [ ] Parent',         // 0
+        '  - [~] Ignored 1',    // 1
+        '  - [~] Ignored 2',    // 2
+      ].join('\n');
+      expect(utils.propagateStateFromChildren(text)).toBe(text); // Parent stays unchecked
       const text2 = [
-        '- [x] Parent', // Should become [ ] because '?' is not 'x'
-        '  - [x] Child 1',
-        '  - [?] Child 2'
+        '- [x] Parent',         // 0
+        '  - [~] Ignored 1',    // 1
+        '  - [~] Ignored 2',    // 2
       ].join('\n');
-      const result2 = utilsXOnly.propagateStateFromChildren(text2);
-      expect(result2).toContain('- [ ] Parent'); // Parent unchecked
+      expect(utils.propagateStateFromChildren(text2)).toBe(text2); // Parent stays checked
     });
 
-    it('should handle multiple independent parent checklists', () => {
+    it('should not update ignored parents', () => {
+      const utils = setupUtils({ ignoreSymbols: ['~'] });
       const text = [
-        '- [ ] Parent 1',
-        '  - [x] Child 1.1',
-        'Some other text',
-        '* [ ] Parent 2',
-        '  * [x] Child 2.1',
-        '  * [x] Child 2.2',
+        '- [~] Ignored Parent', // 0
+        '  - [x] Child 1',
+        '  - [x] Child 2',
       ].join('\n');
-      const result = utilsDefault.propagateStateFromChildren(text);
-      const expected = [
-        '- [x] Parent 1', // Updated
-        '  - [x] Child 1.1',
-        'Some other text',
-        '* [x] Parent 2', // Updated
-        '  * [x] Child 2.1',
-        '  * [x] Child 2.2',
-      ].join('\n');
-      expect(result).toBe(expected);
+      expect(utils.propagateStateFromChildren(text)).toBe(text); // Parent remains ignored
     });
 
-    it('should stop searching for children for a parent when a line with equal or lesser indent is encountered', () => {
+    it('should stop searching children when a line with equal or lesser indent is found', () => {
       const text = [
         '- [ ] Parent 1',          // indent 0
-        'Some regular text',       // indent 0. Stops search for Parent 1 children HERE.
-        '  - [x] Child 1.1',       // indent 2. Ignored for Parent 1 because search stopped.
-        '- [ ] Parent 2',          // indent 0. Processed independently later.
+        'Some regular text',       // indent 0. Stops search for Parent 1 children.
+        '  - [x] Child 1.1',       // indent 2. Should be ignored for Parent 1.
+        '- [ ] Parent 2',          // indent 0. Processed independently.
         '  - [x] Child 2.1',       // indent 2. Child of Parent 2.
       ].join('\n');
 
-      const result = utilsDefault.propagateStateFromChildren(text);
+      const result = checkboxUtils.propagateStateFromChildren(text);
 
-      // Ожидания:
-      // - Parent 1 не найдет детей (из-за "Some regular text") и останется [ ].
-      // - Parent 2 найдет Child 2.1 ([x]) и станет [x].
       const expected = [
-        '- [ ] Parent 1',          // Unchanged
-        'Some regular text',       // Unchanged
-        '  - [x] Child 1.1',       // Unchanged
-        '- [x] Parent 2',          // Updated because Child 2.1 is checked
-        '  - [x] Child 2.1',       // Unchanged
+        '- [ ] Parent 1',          // Unchanged (no children found before stop)
+        'Some regular text',
+        '  - [x] Child 1.1',
+        '- [x] Parent 2',          // Updated by Child 2.1
+        '  - [x] Child 2.1',
       ].join('\n');
-
       expect(result).toBe(expected);
     });
 
-    it('should stop searching for children when a sibling checkbox is encountered', () => {
+    
+     it('should stop searching children when a sibling checkbox (equal/lesser indent) is found', () => {
       const text = [
         '- [ ] Parent 1',          // indent 0
-        '- [ ] Sibling Parent',    // indent 0. Stops search for Parent 1 children HERE.
-        '  - [x] Child 1.1',       // indent 2. Belongs to Sibling Parent if processed.
+        '- [ ] Sibling Parent',    // indent 0. Stops search for Parent 1 children.
+        '  - [x] Child SP.1',      // indent 2. Belongs to Sibling Parent.
       ].join('\n');
 
-      const result = utilsDefault.propagateStateFromChildren(text);
+      const result = checkboxUtils.propagateStateFromChildren(text);
 
-      // Ожидания:
-      // - Parent 1 не найдет детей (из-за "Sibling Parent") и останется [ ].
-      // - Sibling Parent найдет Child 1.1 ([x]) и станет [x].
       const expected = [
-        '- [ ] Parent 1',          // Unchanged
-        '- [x] Sibling Parent',    // Updated because Child 1.1 is checked
-        '  - [x] Child 1.1',       // Unchanged
+        '- [ ] Parent 1',          // Unchanged (no children found before stop)
+        '- [x] Sibling Parent',    // Updated by Child SP.1
+        '  - [x] Child SP.1',
       ].join('\n');
-
       expect(result).toBe(expected);
-    });
 
+       const text2 = [
+         '  - [ ] Parent 1',        // indent 2
+         '    - [x] Child 1.1',     // indent 4
+         '  - [ ] Sibling Parent',  // indent 2. Stops search for Parent 1 children.
+         '    - [ ] Child SP.1',    // indent 4. Belongs to Sibling Parent.
+       ].join('\n');
+       const result2 = checkboxUtils.propagateStateFromChildren(text2);
+       const expected2 = [
+         '  - [x] Parent 1',        // Updated by Child 1.1
+         '    - [x] Child 1.1',
+         '  - [ ] Sibling Parent',  // Unchanged (Child SP.1 is unchecked)
+         '    - [ ] Child SP.1',
+       ].join('\n');
+       expect(result2).toBe(expected2);
+    });
   });
 
-  // --- propagateStateToChildrenFromSingleDiff ---
-  describe('propagateStateToChildrenFromSingleDiff', () => {
+  // --- Тесты для syncText ---
+  describe('syncText', () => {
     const textBefore = [
-      '- [ ] Parent', // 0
-      '  - [ ] Child', // 1
+      '- [ ] Parent',
+      '  - [ ] Child',
+    ].join('\n');
+    const textAfterParentChecked = [ // Simulate user checking parent
+      '- [x] Parent',
+      '  - [ ] Child',
+    ].join('\n');
+    const textAfterChildChecked = [ // Simulate user checking child
+      '- [ ] Parent',
+      '  - [x] Child',
     ].join('\n');
 
-    it('should propagate down if single line changed and it was a checkbox toggle', () => {
-      const textAfter = [
-        '- [x] Parent', // Changed state
-        '  - [ ] Child',
-      ].join('\n');
-      const result = utilsDefault.propagateStateToChildrenFromSingleDiff(textAfter, textBefore);
-      const expected = [ // Expect children to be updated
+    it('should propagate down only if child sync enabled and diff matches', () => {
+      const utils = new CheckboxUtils(createSettings({
+        enableAutomaticChildState: true,
+        enableAutomaticParentState: false, // Parent sync off
+      }));
+      const expected = [
         '- [x] Parent',
+        '  - [x] Child', // Propagated down
+      ].join('\n');
+      expect(utils.syncText(textAfterParentChecked, textBefore)).toBe(expected);
+    });
+
+    it('should propagate up only if parent sync enabled', () => {
+      const utils = new CheckboxUtils(createSettings({
+        enableAutomaticChildState: false, // Child sync off
+        enableAutomaticParentState: true,
+      }));
+      const expected = [
+        '- [x] Parent', // Propagated up
         '  - [x] Child',
       ].join('\n');
-      expect(result).toBe(expected);
+      // syncText calls propagateFromChildren unconditionally if enabled
+      expect(utils.syncText(textAfterChildChecked, textBefore)).toBe(expected);
     });
 
-    it('should NOT propagate down if single line changed but it was NOT checkbox state', () => {
-      const textAfter = [
-        '- [ ] Parent Edited Text', // Text changed, not checkbox
-        '  - [ ] Child',
-      ].join('\n');
-      const result = utilsDefault.propagateStateToChildrenFromSingleDiff(textAfter, textBefore);
-      // Expect original textAfter, no downward propagation
-      expect(result).toBe(textAfter);
-    });
-
-    it('should NOT propagate down if single line changed into non-checkbox', () => {
-      const textAfter = [
-        'Parent removed checkbox', // Structure changed
-        '  - [ ] Child',
-      ].join('\n');
-      const result = utilsDefault.propagateStateToChildrenFromSingleDiff(textAfter, textBefore);
-      expect(result).toBe(textAfter);
-    });
-
-
-    it('should NOT propagate down if multiple lines changed', () => {
-      const textAfter = [
-        '- [x] Parent', // Changed
-        '  - [x] Child', // Changed
-      ].join('\n');
-      const result = utilsDefault.propagateStateToChildrenFromSingleDiff(textAfter, textBefore);
-      expect(result).toBe(textAfter); // Expect original textAfter
-    });
-
-    it('should NOT propagate down if line counts differ', () => {
-      const textAfter = [
+    it('should propagate down then up if both enabled', () => {
+      const utils = new CheckboxUtils(createSettings({
+        enableAutomaticChildState: true,
+        enableAutomaticParentState: true,
+      }));
+      // 1. User checks parent: '- [x] Parent', '  - [ ] Child'
+      // 2. Propagate down:   '- [x] Parent', '  - [x] Child'
+      // 3. Propagate up:     (no change needed as parent is already checked)
+      const expectedDown = [
         '- [x] Parent',
-        '  - [ ] Child',
-        '  - [ ] New Child',
+        '  - [x] Child', // Propagated down
       ].join('\n');
-      const result = utilsDefault.propagateStateToChildrenFromSingleDiff(textAfter, textBefore);
-      expect(result).toBe(textAfter); // Expect original textAfter
+      expect(utils.syncText(textAfterParentChecked, textBefore)).toBe(expectedDown);
+
+      // 1. User checks child: '- [ ] Parent', '  - [x] Child'
+      // 2. Propagate down:   (no change, as only one line changed, and it wasn't the parent)
+      // 3. Propagate up:     '- [x] Parent', '  - [x] Child'
+      const expectedUp = [
+        '- [x] Parent', // Propagated up
+        '  - [x] Child',
+      ].join('\n');
+      expect(utils.syncText(textAfterChildChecked, textBefore)).toBe(expectedUp);
     });
 
-    it('should NOT propagate down if textBefore is undefined', () => {
-      const textAfter = [
-        '- [x] Parent',
-        '  - [ ] Child',
+    it('should do nothing if both syncs disabled', () => {
+      const utils = new CheckboxUtils(createSettings({
+        enableAutomaticChildState: false,
+        enableAutomaticParentState: false,
+      }));
+      expect(utils.syncText(textAfterParentChecked, textBefore)).toBe(textAfterParentChecked);
+      expect(utils.syncText(textAfterChildChecked, textBefore)).toBe(textAfterChildChecked);
+    });
+
+    it('should not propagate down if diff is not a single checkbox state change', () => {
+      const utils = new CheckboxUtils(createSettings({
+        enableAutomaticChildState: true, // Down propagation enabled
+        enableAutomaticParentState: false,
+      }));
+      const textMultipleChanges = [
+        '- [x] Parent Changed', // Text changed too
+        '  - [x] Child also changed',
       ].join('\n');
-      const result = utilsDefault.propagateStateToChildrenFromSingleDiff(textAfter, undefined);
-      expect(result).toBe(textAfter); // Expect original textAfter
+      const textIndentChange = [
+        '  - [x] Parent', // Indent changed
+        '    - [ ] Child',
+      ].join('\n');
+
+      // Multiple lines changed
+      expect(utils.syncText(textMultipleChanges, textBefore)).toBe(textMultipleChanges);
+      // Indent changed (diff > 1 line index)
+      expect(utils.syncText(textIndentChange, textBefore)).toBe(textIndentChange);
     });
   });
 
-  // --- findDifferentLineIndexes ---
-  describe('findDifferentLineIndexes', () => {
-    const lines1 = ['a', 'b', 'c'];
+  // --- Тесты для propagateStateToChildrenFromSingleDiff ---
+  describe('propagateStateToChildrenFromSingleDiff', () => {
+    const textBefore = [
+      '- [ ] Parent',
+      '  - [ ] Child',
+    ].join('\n');
 
+    it('should propagate if only checkbox state changed', () => {
+      const textAfter = [
+        '- [x] Parent', // Only state changed
+        '  - [ ] Child',
+      ].join('\n');
+      const expected = [
+        '- [x] Parent',
+        '  - [x] Child', // Propagated
+      ].join('\n');
+      expect(checkboxUtils.propagateStateToChildrenFromSingleDiff(textAfter, textBefore)).toBe(expected);
+    });
+
+    it('should propagate if text content also changed', () => {
+      const textAfter = [
+        '- [x] Parent Changed Text', // State and text changed
+        '  - [ ] Child',
+      ].join('\n');
+      const expected = [
+        '- [x] Parent Changed Text',
+        '  - [x] Child', // Propagated
+      ].join('\n');
+      expect(checkboxUtils.propagateStateToChildrenFromSingleDiff(textAfter, textBefore)).toBe(expected);
+    });
+
+    it('should NOT propagate if marker changed', () => {
+      const textAfter = [
+        '* [x] Parent', // Marker changed from - to *
+        '  - [ ] Child',
+      ].join('\n');
+      expect(checkboxUtils.propagateStateToChildrenFromSingleDiff(textAfter, textBefore)).toBe(textAfter);
+    });
+
+    it('should NOT propagate if indentation changed', () => {
+      const textAfter = [
+        '  - [x] Parent', // Indentation changed
+        '  - [ ] Child',
+      ].join('\n');
+      // This will be detected as > 1 line difference by findDifferentLineIndexes
+      expect(checkboxUtils.propagateStateToChildrenFromSingleDiff(textAfter, textBefore)).toBe(textAfter);
+    });
+
+
+    it('should NOT propagate if multiple lines changed', () => {
+      const textAfter = [
+        '- [x] Parent',
+        '  - [x] Child', // Second line also changed
+      ].join('\n');
+      expect(checkboxUtils.propagateStateToChildrenFromSingleDiff(textAfter, textBefore)).toBe(textAfter);
+    });
+
+    it('should NOT propagate if changed line is not a checkbox', () => {
+      const textBeforeNonCheck = "Line 1\nLine 2";
+      const textAfterNonCheck = "Line 1 changed\nLine 2";
+      expect(checkboxUtils.propagateStateToChildrenFromSingleDiff(textAfterNonCheck, textBeforeNonCheck)).toBe(textAfterNonCheck);
+    });
+
+    it('should propagate if changed line is an ignored checkbox', () => {
+      const utils = new CheckboxUtils(createSettings({ ignoreSymbols: ['~'] }));
+      const textBeforeIgnored = [
+        '- [~] Parent',
+        '  - [ ] Child',
+      ].join('\n');
+      const textAfterIgnored = [
+        '- [x] Parent', // Changed FROM ignored TO checked
+        '  - [ ] Child',
+      ].join('\n');
+      const expected = [
+        '- [x] Parent',
+        '  - [x] Child', // Propagated
+      ].join('\n');
+
+      expect(utils.propagateStateToChildrenFromSingleDiff(textAfterIgnored, textBeforeIgnored)).toBe(expected);
+    });
+
+    it('should return original text if textBefore is undefined', () => {
+      const text = '- [ ] Line';
+      expect(checkboxUtils.propagateStateToChildrenFromSingleDiff(text, undefined)).toBe(text);
+    });
+
+    it('should return original text if line counts differ', () => {
+      const text1 = '- [ ] Line1\n- [ ] Line2';
+      const text2 = '- [ ] Line1';
+      expect(checkboxUtils.propagateStateToChildrenFromSingleDiff(text1, text2)).toBe(text1);
+    });
+  });
+
+  // --- Тесты для findDifferentLineIndexes ---
+  describe('findDifferentLineIndexes', () => {
     it('should return empty array for identical lines', () => {
+      const lines1 = ['a', 'b', 'c'];
       const lines2 = ['a', 'b', 'c'];
-      expect(utilsDefault.findDifferentLineIndexes(lines1, lines2)).toEqual([]);
+      expect(checkboxUtils.findDifferentLineIndexes(lines1, lines2)).toEqual([]);
     });
 
     it('should return index of the single different line', () => {
+      const lines1 = ['a', 'b', 'c'];
       const lines2 = ['a', 'B', 'c'];
-      expect(utilsDefault.findDifferentLineIndexes(lines1, lines2)).toEqual([1]);
+      expect(checkboxUtils.findDifferentLineIndexes(lines1, lines2)).toEqual([1]);
     });
 
     it('should return indexes of multiple different lines', () => {
-      const lines2 = ['A', 'b', 'C'];
-      expect(utilsDefault.findDifferentLineIndexes(lines1, lines2)).toEqual([0, 2]);
+      const lines1 = ['a', 'b', 'c', 'd'];
+      const lines2 = ['A', 'b', 'C', 'd'];
+      expect(checkboxUtils.findDifferentLineIndexes(lines1, lines2)).toEqual([0, 2]);
     });
 
-    it('should throw error if line lengths are different', () => {
-      const lines2 = ['a', 'b'];
-      expect(() => utilsDefault.findDifferentLineIndexes(lines1, lines2)).toThrow(
-        'the length of the lines must be equal'
-      );
+    it('should detect differences at start and end', () => {
+      const lines1 = ['a', 'b', 'c'];
+      const lines2 = ['X', 'b', 'Y'];
+      expect(checkboxUtils.findDifferentLineIndexes(lines1, lines2)).toEqual([0, 2]);
+    });
+
+    it('should throw error if line arrays have different lengths', () => {
+      const lines1 = ['a', 'b'];
+      const lines2 = ['a', 'b', 'c'];
+      expect(() => checkboxUtils.findDifferentLineIndexes(lines1, lines2))
+        .toThrow("the length of the lines must be equal");
+      expect(() => checkboxUtils.findDifferentLineIndexes(lines2, lines1))
+        .toThrow("the length of the lines must be equal");
     });
   });
 
-
-  // --- syncText (Integration) ---
-  describe('syncText', () => {
-    describe('When user changes parent state directly', () => {
-      const textBefore = [
-          '- [ ] Parent',
-          '  - [ ] Child 1',
-          '  - [ ] Child 2',
-        ].join('\n');
-        const textAfterUserCheck = [
-          '- [x] Parent', // User checked this
-          '  - [ ] Child 1',
-          '  - [ ] Child 2',
-        ].join('\n');
-
-      it('should propagate down when child sync is ENABLED', () => { 
-        const result = utilsDefault.syncText(textAfterUserCheck, textBefore);
-        const expected = [
-          '- [x] Parent',
-          '  - [x] Child 1', // Propagated down
-          '  - [x] Child 2', // Propagated down
-        ].join('\n');
-        expect(result).toBe(expected);
-      });
-
-      it('should NOT propagate down when child sync is DISABLED', () => {
-        const result = utilsChildSyncDisabled.syncText(textAfterUserCheck, textBefore); 
-        const expected = [ // Ожидаем, что дети НЕ изменились
-          '- [ ] Parent', // propagateStateFromChildren
-          '  - [ ] Child 1',
-          '  - [ ] Child 2',
-        ].join('\n');
-        expect(result).toBe(expected);
-      });
-
-      const textBeforeUncheck = [
-          '- [x] Parent',
-          '  - [x] Child 1',
-          '  - [x] Child 2',
-      ].join('\n');
-      const textAfterUserUncheck = [
-          '- [ ] Parent', // User unchecked this
-          '  - [x] Child 1',
-          '  - [x] Child 2',
-      ].join('\n');
-
-      it('should propagate down (uncheck) when child sync is ENABLED', () => { 
-           const result = utilsDefault.syncText(textAfterUserUncheck, textBeforeUncheck);
-           const expected = [
-              '- [ ] Parent',
-              '  - [ ] Child 1', // Propagated down
-              '  - [ ] Child 2', // Propagated down
-           ].join('\n');
-           expect(result).toBe(expected);
-      });
-
-      it('should NOT propagate down (uncheck) when child sync is DISABLED', () => {
-          const result = utilsChildSyncDisabled.syncText(textAfterUserUncheck, textBeforeUncheck); 
-          const expected = [ // Ожидаем, что дети НЕ изменились
-              '- [x] Parent', // propagateStateFromChildren
-              '  - [x] Child 1',
-              '  - [x] Child 2',
-           ].join('\n');
-           expect(result).toBe(expected);
-      });
-
-  });
-
-    it('should update parent when parent sync is ENABLED and user checks last child', () => {
-      const textBefore = [
-        '- [ ] Parent',
-        '  - [x] Child 1',
-        '  - [ ] Child 2', // User will check this
-      ].join('\n');
-      const textAfterUserCheck = [
-        '- [ ] Parent',
-        '  - [x] Child 1',
-        '  - [x] Child 2', // User checked this
-      ].join('\n');
-
-      const result = utilsDefault.syncText(textAfterUserCheck, textBefore);
-      // SingleDiff won't trigger down prop. FromChildren runs.
-      const expected = [
-        '- [x] Parent', // Updated by FromChildren
-        '  - [x] Child 1',
-        '  - [x] Child 2',
-      ].join('\n');
-      expect(result).toBe(expected);
-    });
-
-    it('should NOT update parent when parent sync is DISABLED and user checks last child', () => {
-      const textBefore = [
-        '- [ ] Parent',
-        '  - [x] Child 1',
-        '  - [ ] Child 2', // User will check this
-      ].join('\n');
-      const textAfterChildCheck = [
-        '- [ ] Parent',    // State before syncText runs propagateFromChildren
-        '  - [x] Child 1',
-        '  - [x] Child 2', // User checked this
-      ].join('\n');
-      const result = utilsParentSyncDisabled.syncText(textAfterChildCheck, textBefore); // Использует utilsParentSyncDisabled
-      const expected = [ // Родитель НЕ должен обновиться
-        '- [ ] Parent',
-        '  - [x] Child 1',
-        '  - [x] Child 2',
-      ].join('\n');
-      expect(result).toBe(expected);
-    });
-
-    it('should update parent when parent sync is ENABLED and user unchecks child', () => {
-      const textBefore = [
-        '- [x] Parent',
-        '  - [x] Child 1', // User will uncheck this
-        '  - [x] Child 2',
-      ].join('\n');
-      const textAfterUserUncheck = [
-        '- [x] Parent',
-        '  - [ ] Child 1', // User unchecked this
-        '  - [x] Child 2',
-      ].join('\n');
-
-      const result = utilsDefault.syncText(textAfterUserUncheck, textBefore);
-      // SingleDiff won't trigger down prop. FromChildren runs.
-      const expected = [
-        '- [ ] Parent', // Updated by FromChildren
-        '  - [ ] Child 1',
-        '  - [x] Child 2',
-      ].join('\n');
-      expect(result).toBe(expected);
-    });
-
-    it('should NOT update parent when parent sync is DISABLED and user unchecks child', () => {
-      const textBefore = [
-        '- [x] Parent',
-        '  - [x] Child 1', // User will uncheck this
-        '  - [x] Child 2',
-      ].join('\n');
-      const textAfterChildUncheck = [
-        '- [x] Parent',    // State before syncText runs propagateFromChildren
-        '  - [ ] Child 1', // User unchecked this
-        '  - [x] Child 2',
-      ].join('\n');
-      const result = utilsParentSyncDisabled.syncText(textAfterChildUncheck, textBefore); // utilsParentSyncDisabled
-      const expected = [ // Родитель НЕ должен обновиться
-        '- [x] Parent',
-        '  - [ ] Child 1',
-        '  - [x] Child 2',
-      ].join('\n');
-      expect(result).toBe(expected);
-    });
-
-    it('should update parent based on children when multiple lines change and parent sync is ENABLED', () => {
-      const textBefore = [
-        '- [ ] Parent',
-        '  - [ ] Child 1',
-        '  - [ ] Child 2',
-        '  - [ ] Child 3',
-      ].join('\n');
-      // User checks Parent AND Child 1, but leaves Child 2 unchecked
-      const textAfterMultipleChanges = [
-        '- [x] Parent',  // Changed by user
-        '  - [x] Child 1', // Changed by user
-        '  - [ ] Child 2', // Left unchecked
-        '  - [ ] Child 3', // Left unchecked
-      ].join('\n');
-
-      const result = utilsDefault.syncText(textAfterMultipleChanges, textBefore);
-      // SingleDiff won't run (2 changes). FromChildren runs.
-      // Since Child 2/3 are unchecked, Parent should become unchecked.
-      const expected = [
-        '- [ ] Parent',  // Corrected by FromChildren
-        '  - [x] Child 1',
-        '  - [ ] Child 2',
-        '  - [ ] Child 3',
-      ].join('\n');
-      expect(result).toBe(expected);
-    });
-
-    it('should NOT update parent when multiple lines change and parent sync is DISABLED', () => {
-      const textBefore = [
-        '- [ ] Parent',
-        '  - [ ] Child 1',
-        '  - [ ] Child 2',
-      ].join('\n');
-      const textAfterMultipleChanges = [ // User checks Parent and Child 1
-        '- [x] Parent',
-        '  - [x] Child 1',
-        '  - [ ] Child 2',
-      ].join('\n');
-      const result = utilsParentSyncDisabled.syncText(textAfterMultipleChanges, textBefore); // utilsParentSyncDisabled
-      const expected = [ // Родитель НЕ корректируется, остается как есть
-        '- [x] Parent',
-        '  - [x] Child 1',
-        '  - [ ] Child 2',
-      ].join('\n');
-      expect(result).toBe(expected);
-    });
-
-  });
 });

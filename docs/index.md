@@ -15,7 +15,7 @@ It offers bidirectional synchronization options based on your settings:
 1.  **Parent state from children:** If enabled, the parent checkbox state automatically reflects the completion status of its children.
 2.  **Child state from parent:** If enabled, manually changing a parent checkbox's state will cascade that change down to all its children.
 
-This provides flexibility in how you manage your task lists.
+This provides flexibility in how you manage your task lists, allowing you to customize checkbox symbol recognition and synchronization behavior.
 
 **Quick Links:**
 *   [Usage and Examples](usage.md)
@@ -39,7 +39,7 @@ This provides flexibility in how you manage your task lists.
 1.  **Состояние родителя от детей:** Если включено, состояние родительского чекбокса автоматически отражает статус выполнения его дочерних элементов.
 2.  **Состояние детей от родителя:** Если включено, ручное изменение состояния родительского чекбокса каскадно применит это изменение ко всем его дочерним элементам.
 
-Это обеспечивает гибкость в управлении списками задач.
+Это обеспечивает гибкость в управлении списками задач, позволяя вам настраивать распознавание символов чекбоксов и поведение синхронизации.
 
 **Быстрые ссылки:**
 *   [Использование и примеры](usage.md)
