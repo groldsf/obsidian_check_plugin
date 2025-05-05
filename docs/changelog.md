@@ -10,7 +10,7 @@ nav_order: 3
 
 ## [1.0.9] - 2025-04-11
 ### Added
-- Added [Allow (un)checking of parent #9](https://github.com/groldsf/obsidian_check_plugin/issues/9).
+- Added "Allow (un)checking of parent" [#9](https://github.com/groldsf/obsidian_check_plugin/issues/9).
 - Added cachfile cache.
 - Added new settings.
 
