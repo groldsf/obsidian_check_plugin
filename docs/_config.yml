@@ -1,0 +1,17 @@
+remote_theme: pmarsceill/just-the-docs
+
+# --- Основные настройки сайта (используются темой) ---
+title: Checkbox Sync Documentation
+description: Documentation for the Checkbox Sync Obsidian plugin.
+
+# --- Базовые настройки "Just the Docs" (можно добавить позже) ---
+# Включить встроенный поиск (требует небольшой настройки, см. док-ю темы)
+search_enabled: false
+
+# Вспомогательные ссылки в шапке (необязательно)
+aux_links:
+  "Checkbox Sync on GitHub":
+    - "https://github.com/groldsf/obsidian_check_plugin" # Замените на URL вашего репозитория
+
+# Настройки цветовой схемы (необязательно, по умолчанию светлая)
+color_scheme: light
