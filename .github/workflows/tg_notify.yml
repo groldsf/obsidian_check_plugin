@@ -14,7 +14,8 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Create message file
+      - name: Create message file and detect length
+        id: prepare
         run: |
           TITLE="${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}"
           COMMENT="${{ github.event.comment.body || '' }}"
@@ -26,11 +27,11 @@ ${COMMENT}
 
 See: ${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }}"
           echo "$MSG" > message.txt
-          LENGTH=$(wc -c < message.txt)
-          echo "MESSAGE_LENGTH=$LENGTH" >> $GITHUB_ENV
+          LENGTH=$(wc -c < message.txt | tr -d ' ')
+          echo "length=$LENGTH" >> $GITHUB_OUTPUT
 
       - name: Send full message if short
-        if: ${{ env.MESSAGE_LENGTH < 4096 }}
+        if: steps.prepare.outputs.length < 4096
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -38,7 +39,7 @@ See: ${{ github.event.issue.html_url || github.event.pull_request.html_url || gi
           message_file: message.txt
 
       - name: Send only link if message too long
-        if: ${{ env.MESSAGE_LENGTH >= 4096 }}
+        if: steps.prepare.outputs.length >= 4096
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
