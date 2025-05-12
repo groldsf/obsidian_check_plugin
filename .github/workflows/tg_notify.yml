@@ -11,38 +11,26 @@ on:
     types: [submitted]
 
 jobs:
-  notify:
+  build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
-      - name: Create message file and detect length
-        id: prepare
+      - name: Prepare Telegram message
+        id: prepare_message
         run: |
-          TITLE="${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}"
-          COMMENT="${{ github.event.comment.body || '' }}"
-          MSG="Repository: ${{ github.repository }}
-Type: ${{ github.event_name }}
-Action: ${{ github.event.action }}
-Title: ${TITLE}
-${COMMENT}
+          FULL_MESSAGE="Repository: ${{ github.repository }}\nType: ${{ github.event_name }}\nAction: ${{ github.event.action }}\nTitle: ${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}\n${{ github.event.comment.body || '' }}\nSee ${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }}"
+          SHORT_MESSAGE="Repository: ${{ github.repository }}\nUpdate in ${{ github.event_name }} (${{ github.event.action }})\nTitle: ${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}\nSee ${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }}"
+          
+          # Проверяем длину сообщения (лимит Telegram — 4096 символов)
+          if [ ${#FULL_MESSAGE} -gt 4096 ]; then
+            echo "message=$SHORT_MESSAGE" >> $GITHUB_OUTPUT
+          else
+            echo "message=$FULL_MESSAGE" >> $GITHUB_OUTPUT
+          fi
 
-See: ${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }}"
-          echo "$MSG" > message.txt
-          LENGTH=$(wc -c < message.txt | tr -d ' ')
-          echo "length=$LENGTH" >> $GITHUB_OUTPUT
-
-      - name: Send full message if short
-        if: steps.prepare.outputs.length < 4096
+      - name: Send Telegram message
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          message_file: message.txt
-
-      - name: Send only link if message too long
-        if: steps.prepare.outputs.length >= 4096
-        uses: appleboy/telegram-action@master
-        with:
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          message: |
-            See: ${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }}
+          message: ${{ steps.prepare_message.outputs.message }}
