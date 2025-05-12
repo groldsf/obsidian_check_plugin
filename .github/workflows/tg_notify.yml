@@ -19,7 +19,7 @@ jobs:
         id: prepare_message # Добавляем ID шагу, чтобы ссылаться на его output
         run: |
           TITLE="${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}"
-          BODY="${{ github.event.comment.body || github.event.review.body || '' }}" # Добавил github.event.review.body для pull_request_review
+          BODY="${{ github.event.issue.body || github.event.comment.body || github.event.review.body || '' }}" # Добавил github.event.review.body для pull_request_review
           URL="${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }}"
           
           # Формируем полное сообщение
@@ -55,7 +55,7 @@ jobs:
         # Важно: нужно корректно обрабатывать пустые значения, если некоторых полей нет в событии
         env:
           TITLE: ${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий к событию' }}
-          BODY: ${{ github.event.comment.body || github.event.review.body || '' }} # Если комментарий пуст или это не событие комментария
+          BODY: ${{ github.event.issue.body || github.event.comment.body || github.event.review.body || '' }} # Если комментарий пуст или это не событие комментария
           URL: ${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }}
 
       - name: Send Telegram Message
