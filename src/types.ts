@@ -6,6 +6,7 @@ export interface CheckboxSyncPluginSettings {
   ignoreSymbols: string[];
   unknownSymbolPolicy: CheckboxState;
   enableAutomaticFileSync: boolean;
+	consoleEnabled: boolean;
 }
 
 export enum CheckboxState {
@@ -22,4 +23,5 @@ export const DEFAULT_SETTINGS: CheckboxSyncPluginSettings = {
   ignoreSymbols: [],
   unknownSymbolPolicy: CheckboxState.Checked, 
   enableAutomaticFileSync: false,
+	consoleEnabled: false,
 };

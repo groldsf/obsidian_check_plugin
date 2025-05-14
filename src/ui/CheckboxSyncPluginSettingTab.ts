@@ -15,6 +15,7 @@ import { EnableParentSyncSettingComponent } from "./components/synchronizationBe
 import { ConfirmModal, InfoModal, SaveConfirmModal } from "./modals";
 import { SettingsValidator } from "./validation/SettingsValidator";
 import { ValidationError } from "./validation/types";
+import { EnableConsoleLogSettingComponent } from "./components/devGroup/EnableDebug";
 
 export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
   plugin: CheckboxSyncPlugin;
@@ -58,10 +59,18 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
       [parentToggleComp, childrenToggleComp, automaticFileSyncToggleComp]
     );
 
+		const consoleLog = new EnableConsoleLogSettingComponent();
+
+		const devGroup = new SettingGroup(
+			"Dev",
+			[consoleLog]
+		);
+
     // Сохраняем созданную группу (или группы) в поле класса
     this.settingGroups = [
       symbolGroup,
-      behaviorGroup
+      behaviorGroup,
+			devGroup
     ];
 
     const changeListener = () => this.settingChanged();
