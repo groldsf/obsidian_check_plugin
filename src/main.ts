@@ -42,6 +42,7 @@ export default class CheckboxSyncPlugin extends Plugin {
 
 	async loadSettings() {
 		this._settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		this.setDebugFlag(this.settings.consoleEnabled);
 	}
 
 	get settings(): Readonly<CheckboxSyncPluginSettings> {
