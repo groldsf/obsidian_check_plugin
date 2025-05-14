@@ -1,6 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
+import { debugWrapConsolePlugin } from "./esbuild-debug-wrap-plugin.mjs";
 
 const banner =
 `/*
@@ -39,6 +40,12 @@ const context = await esbuild.context({
 	treeShaking: true,
 	outfile: "main.js",
 	minify: prod,
+	plugins: [
+		debugWrapConsolePlugin({
+			debugFlagName: 'CHECKBOX_SYNC_DEBUG',	
+			methods: ['log', 'info', 'debug'],
+		}),
+	],
 });
 
 if (prod) {

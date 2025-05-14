@@ -7,49 +7,64 @@ import { CheckboxSyncPluginSettingTab } from "./ui/CheckboxSyncPluginSettingTab"
 import SyncController from "./SyncController";
 import { CheckboxSyncPluginSettings, DEFAULT_SETTINGS } from "./types";
 
+const DEBUG_FLAG_NAME = 'CHECKBOX_SYNC_DEBUG';
+
+// --- Объявление глобальной переменной для TypeScript ---
+// Это нужно, чтобы TypeScript не ругался на window[DEBUG_FLAG_NAME]
+declare global {
+	interface Window {
+		[key: string]: any; // Позволяем индексировать window строкой
+	}
+}
+
 export default class CheckboxSyncPlugin extends Plugin {
-  private _settings: CheckboxSyncPluginSettings;
+	private _settings: CheckboxSyncPluginSettings;
 
-  private syncController: SyncController;
-  private checkboxUtils: CheckboxUtils;
-  private fileStateHolder: FileStateHolder;
-  private fileLoadEventHandler: FileLoadEventHandler;
-  private fileChangeEventHandler: FileChangeEventHandler;
+	private syncController: SyncController;
+	private checkboxUtils: CheckboxUtils;
+	private fileStateHolder: FileStateHolder;
+	private fileLoadEventHandler: FileLoadEventHandler;
+	private fileChangeEventHandler: FileChangeEventHandler;
 
-  async onload() {
-    await this.loadSettings();
+	async onload() {
+		await this.loadSettings();
 
-    this.fileStateHolder = new FileStateHolder(this.app.vault);
-    this.checkboxUtils = new CheckboxUtils(this.settings);
-    this.syncController = new SyncController(this.app.vault, this.checkboxUtils, this.fileStateHolder);
-    this.fileLoadEventHandler = new FileLoadEventHandler(this, this.app, this.syncController, this.fileStateHolder);
-    this.fileChangeEventHandler = new FileChangeEventHandler(this, this.app, this.syncController, this.fileStateHolder);
+		this.fileStateHolder = new FileStateHolder(this.app.vault);
+		this.checkboxUtils = new CheckboxUtils(this.settings);
+		this.syncController = new SyncController(this.app.vault, this.checkboxUtils, this.fileStateHolder);
+		this.fileLoadEventHandler = new FileLoadEventHandler(this, this.app, this.syncController, this.fileStateHolder);
+		this.fileChangeEventHandler = new FileChangeEventHandler(this, this.app, this.syncController, this.fileStateHolder);
 
-    this.addSettingTab(new CheckboxSyncPluginSettingTab(this.app, this));
-    this.fileLoadEventHandler.registerEvents();
-    this.fileChangeEventHandler.registerEvents();
-  }
+		this.addSettingTab(new CheckboxSyncPluginSettingTab(this.app, this));
+		this.fileLoadEventHandler.registerEvents();
+		this.fileChangeEventHandler.registerEvents();
+	}
 
-  async loadSettings() {
-    this._settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-  }
+	async loadSettings() {
+		this._settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+	}
 
-  get settings(): Readonly<CheckboxSyncPluginSettings> {
-    return this._settings;
-  }
+	get settings(): Readonly<CheckboxSyncPluginSettings> {
+		return this._settings;
+	}
 
-  async updateSettings(callback: (settings: CheckboxSyncPluginSettings) => void | Promise<void>) {
-    await callback(this._settings);
-    await this.saveData(this.settings);
+	async updateSettings(callback: (settings: CheckboxSyncPluginSettings) => void | Promise<void>) {
+		await callback(this._settings);
+		this.setDebugFlag(this.settings.consoleEnabled);
+		await this.saveData(this.settings);
 
-    if (this.settings.enableAutomaticFileSync) {
-      //надо пересинхронизировать все файлы в кеше
-      const allFile = this.fileStateHolder.getAllFiles();
-      await Promise.all(
-        allFile.map(async (file: TFile) => {
-          await this.syncController.syncFile(file);
-        })
-      );
-    }
-  }
+		if (this.settings.enableAutomaticFileSync) {
+			//надо пересинхронизировать все файлы в кеше
+			const allFile = this.fileStateHolder.getAllFiles();
+			await Promise.all(
+				allFile.map(async (file: TFile) => {
+					await this.syncController.syncFile(file);
+				})
+			);
+		}
+	}
+
+	private setDebugFlag(enabled: boolean) {
+		window[DEBUG_FLAG_NAME] = enabled;
+	}
 }
