@@ -27,32 +27,22 @@ export class PathGlobsSettingComponent extends BaseSettingComponent {
 		const multilineStringValue = this.arrayToMultilineString(currentValue as string[] | undefined);
 
 		const descHtml =
-			`<p>List files or folders that the plugin should IGNORE. 
-      This uses "glob patterns" (similar to <code>.gitignore</code> syntax) to match paths.</p>
-      <ul>
-        <li>Each pattern on a new line. If this list is empty, no files are ignored (plugin processes all).</li>
-        <li>Example to IGNORE: <code>My Folder/</code> or <code>*.log</code></li>
-        <li>Example to PROCESS an item within an IGNORED path: <code>!My Folder/My Important File.md</code></li>
-        <li>The last rule that matches a file determines its fate.</li>
-        <li>For more on glob syntax, search "glob patterns online" or see 
-            <a href="https://en.wikipedia.org/wiki/Glob_(programming)" target="_blank" rel="noopener noreferrer">Glob (programming) on Wikipedia</a>.
-        </li>
-      </ul>`;
+			`<p>Define rules to specify which files and folders the plugin should IGNORE. 
+      Uses the same pattern syntax as <code>.gitignore</code> files (powered by the 'ignore' library).</p>
+      <p>For detailed syntax, refer to the 
+          <a href="https://git-scm.com/docs/gitignore" target="_blank" rel="noopener noreferrer">official .gitignore documentation</a>.
+      </p>`;
 
 		this.setting = new Setting(container)
-			.setName('Ignored Files & Folders')
+			.setName('File Ignore Rules (.gitignore style)')
 			// Используем createFragmentWithHTML для описания
 			.setDesc(this.createFragmentWithHTML(descHtml))
 			.addTextArea(text => {
 				this.textInput = text;
 				text.setPlaceholder(
-					'# Lines starting with # are comments and will be ignored\n' +
-					'Drafts/\n' +
-					'*.tmp\n' +
-					'!Drafts/ReadyToPublish.md\n\n' +
-					'# To process ONLY files in "Projects" folder:\n' +
-					'*\n' +
-					'!Projects/**'
+					'# Examples:\n' +
+            '# Ignore all files in the "Drafts" folder\n' +
+            'Drafts/\n\n'
 				);
 
 				text.setValue(multilineStringValue);
