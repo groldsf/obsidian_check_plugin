@@ -16,6 +16,7 @@ import { ConfirmModal, InfoModal, SaveConfirmModal } from "./modals";
 import { SettingsValidator } from "./validation/SettingsValidator";
 import { ValidationError } from "./validation/types";
 import { EnableConsoleLogSettingComponent } from "./components/devGroup/EnableDebug";
+import { PathGlobsSettingComponent } from "./components/pathGroup/PathGlobsSettingComponent";
 
 export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
 	plugin: CheckboxSyncPlugin;
@@ -59,6 +60,14 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
 			[parentToggleComp, childrenToggleComp, automaticFileSyncToggleComp]
 		);
 
+		const pathGlobsComp = new PathGlobsSettingComponent();
+
+		const filteringGroup = new SettingGroup(
+			"File Scope & Filtering", 
+			[pathGlobsComp],          
+			"Define rules to include or exclude files/folders from plugin processing."
+		);
+
 		const consoleLog = new EnableConsoleLogSettingComponent();
 
 		const devGroup = new SettingGroup(
@@ -70,6 +79,7 @@ export class CheckboxSyncPluginSettingTab extends PluginSettingTab {
 		this.settingGroups = [
 			symbolGroup,
 			behaviorGroup,
+			filteringGroup,
 			devGroup
 		];
 
