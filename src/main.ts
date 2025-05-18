@@ -34,7 +34,7 @@ export default class CheckboxSyncPlugin extends Plugin {
 		this.fileFilter = new FileFilter(this.settings);
 		this.fileStateHolder = new FileStateHolder(this.app.vault);
 		this.checkboxUtils = new CheckboxUtils(this.settings);
-		this.syncController = new SyncController(this.app.vault, this.checkboxUtils, this.fileStateHolder);
+		this.syncController = new SyncController(this.app.vault, this.checkboxUtils, this.fileStateHolder, this.fileFilter);
 		this.fileLoadEventHandler = new FileLoadEventHandler(this, this.app, this.syncController, this.fileStateHolder);
 		this.fileChangeEventHandler = new FileChangeEventHandler(this, this.app, this.syncController, this.fileStateHolder);
 

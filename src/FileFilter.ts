@@ -47,7 +47,7 @@ export class FileFilter {
    * @param newSettings The new plugin settings.
    */
   public updateSettings(newSettings: Readonly<CheckboxSyncPluginSettings>): void {
-    console.log("FileFilter: Settings updated. Re-initializing ignorer."); // Для отладки
+    console.log("FileFilter: Settings updated."); // Для отладки
     this.settings = newSettings; // Обновляем ссылку на настройки
     this.initIgnorer();          // Переинициализируем ignorer с новыми pathGlobs
   }
