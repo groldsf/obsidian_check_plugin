@@ -4,6 +4,11 @@ nav_order: 3
 ---
 # Changelog
 
+## [1.2.0] - 2025-XX-XX
+### Added
+- Added Feature: **Logging Toggle:** Add a setting to enable/disable detailed logging for debugging purposes.
+- added Feature **File/Folder Scope Filter:** Implement settings to include or exclude specific files or folders where the plugin should be active.
+
 ## [1.1.0] - 2025-05-05
 ### Added
 - Added Feature: Flexible Checkbox Symbol Configuration[#11](https://github.com/groldsf/obsidian_check_plugin/issues/11).

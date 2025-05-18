@@ -51,6 +51,12 @@ These settings control when and how the synchronization logic runs.
     -   **Enabled:** Automatically synchronizes checkbox states when files are loaded/opened and immediately after plugin settings are applied. This ensures consistency but might have performance implications on very large vaults or files. *(Requires Obsidian restart or settings reload to take full effect)*.
     -   **Disabled (Default):** Synchronization only occurs when you *manually* change a checkbox's state within Obsidian. This is the default behavior to minimize potential performance impact.
 
+### File Scope & Filtering
+-	**File ignore Rules (.gitignore style)**
+	- This setting allows you to define which files and folders Checkbox Sync should process. If the list of patterns is empty, the plugin will operate on all markdown files in your vault.
+	- The filtering uses **.gitignore syntax** and is powered by the [`ignore`](https://github.com/kaelzhang/node-ignore) library.
+
+
 ### Dev
 
 -   **Enable console log**
