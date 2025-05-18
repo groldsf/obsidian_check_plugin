@@ -41,4 +41,14 @@ export class FileFilter {
     // Нам нужно инвертировать это, чтобы получить "разрешен ли файл".
     return !this.ignorer.ignores(filePath);
   }
+
+	/**
+   * Updates the filter المستقيمs with new plugin settings and re-initializes the ignorer.
+   * @param newSettings The new plugin settings.
+   */
+  public updateSettings(newSettings: Readonly<CheckboxSyncPluginSettings>): void {
+    console.log("FileFilter: Settings updated. Re-initializing ignorer."); // Для отладки
+    this.settings = newSettings; // Обновляем ссылку на настройки
+    this.initIgnorer();          // Переинициализируем ignorer с новыми pathGlobs
+  }
 }

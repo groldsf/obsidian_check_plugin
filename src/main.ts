@@ -6,6 +6,7 @@ import FileStateHolder from "./FileStateHolder";
 import { CheckboxSyncPluginSettingTab } from "./ui/CheckboxSyncPluginSettingTab";
 import SyncController from "./SyncController";
 import { CheckboxSyncPluginSettings, DEFAULT_SETTINGS } from "./types";
+import { FileFilter } from "./FileFilter";
 
 const DEBUG_FLAG_NAME = 'CHECKBOX_SYNC_DEBUG';
 
@@ -25,10 +26,12 @@ export default class CheckboxSyncPlugin extends Plugin {
 	private fileStateHolder: FileStateHolder;
 	private fileLoadEventHandler: FileLoadEventHandler;
 	private fileChangeEventHandler: FileChangeEventHandler;
+	private fileFilter: FileFilter;
 
 	async onload() {
 		await this.loadSettings();
 
+		this.fileFilter = new FileFilter(this.settings);
 		this.fileStateHolder = new FileStateHolder(this.app.vault);
 		this.checkboxUtils = new CheckboxUtils(this.settings);
 		this.syncController = new SyncController(this.app.vault, this.checkboxUtils, this.fileStateHolder);
@@ -52,7 +55,10 @@ export default class CheckboxSyncPlugin extends Plugin {
 	async updateSettings(callback: (settings: CheckboxSyncPluginSettings) => void | Promise<void>) {
 		await callback(this._settings);
 		this.setDebugFlag(this.settings.consoleEnabled);
+		this.fileFilter.updateSettings(this.settings);
 		await this.saveData(this.settings);
+
+		
 
 		if (this.settings.enableAutomaticFileSync) {
 			//надо пересинхронизировать все файлы в кеше
