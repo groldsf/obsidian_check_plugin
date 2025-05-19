@@ -17,7 +17,8 @@ const config: Config = {
   coverageDirectory: "coverage",
 
   // Indicates which provider should be used to instrument code for coverage
-  coverageProvider: "v8",
+  // coverageProvider: "v8",
+	coverageProvider: "babel",
 
   // An array of file extensions your modules use
   moduleFileExtensions: [
