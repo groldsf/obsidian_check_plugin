@@ -13,7 +13,8 @@ export interface CheckboxSyncPluginSettings {
 export enum CheckboxState {
   Checked = 'checked',
   Unchecked = 'unchecked',
-  Ignore = 'ignore'
+  Ignore = 'ignore',
+	NoCheckbox = "noCheckbox"
 }
 
 export const DEFAULT_SETTINGS: CheckboxSyncPluginSettings = {
