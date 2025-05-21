@@ -43,6 +43,11 @@ const config: Config = {
     '^src/(.*)$': '<rootDir>/src/$1',
   },
 
+	testPathIgnorePatterns: [
+    "/node_modules/", // Хорошо иметь это явно, хотя Jest часто делает это по умолчанию
+    "/__tests__/fakes/" // Исключаем папку fakes внутри __tests__
+  ],
+	
 };
 
 export default config;

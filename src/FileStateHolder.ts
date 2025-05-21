@@ -1,66 +1,84 @@
 import { Mutex } from "async-mutex";
 import { TFile, Vault } from "obsidian";
+import { IFilePathStateHolder } from "./IFilePathStateHolder";
 
 
-export default class FileStateHolder {
-  private map: Map<TFile, string>;
-  private vault: Vault;
-  private mutex: Mutex;
+export default class FileStateHolder implements IFilePathStateHolder{
+	private map: Map<TFile, string>;
+	private vault: Vault;
+	private mutex: Mutex;
 
-  constructor(vault: Vault) {
-    this.vault = vault;
-    this.map = new Map();
-    this.mutex = new Mutex();
-  }
+	constructor(vault: Vault) {
+		this.vault = vault;
+		this.map = new Map();
+		this.mutex = new Mutex();
+	}
 
-  /**
-   * Initializes the file's data if it hasn't been initialized yet.
-   * 
-   * @param file - The file object to initialize.
-   * @param text - Optional text content to associate with the file. If not provided, it will be read from the vault.
-   * @returns A promise that resolves to `true` if the file was initialized, or `false` if it was already initialized.
-   */
-  async initIfNeeded(file: TFile, text?: string): Promise<boolean> {
-    if (this.has(file)) {
-      return false;
-    }
-    let res = await this.mutex.runExclusive<boolean>(async () => {
-      if (this.has(file)) {
-        return false;
-      }
-      // console.log(`updateIfNeeded "${file.name}" start`);
-      if (!text) {
-        text = await this.vault.read(file);
-      }
-      this.set(file, text);
-      return true;
-    });
-    return res;
-  }
+	/**
+	 * Initializes the file's data if it hasn't been initialized yet.
+	 * 
+	 * @param file - The file object to initialize.
+	 * @param text - Optional text content to associate with the file. If not provided, it will be read from the vault.
+	 * @returns A promise that resolves to `true` if the file was initialized, or `false` if it was already initialized.
+	 */
+	async initIfNeeded(file: TFile, text?: string): Promise<boolean> {
+		if (this.has(file)) {
+			return false;
+		}
+		let res = await this.mutex.runExclusive<boolean>(async () => {
+			if (this.has(file)) {
+				return false;
+			}
+			// console.log(`updateIfNeeded "${file.name}" start`);
+			if (!text) {
+				text = await this.vault.read(file);
+			}
+			this.set(file, text);
+			return true;
+		});
+		return res;
+	}
 
-  has(file: TFile) {
-    return this.map.has(file);
-  }
+	has(file: TFile) {
+		return this.map.has(file);
+	}
 
-  set(file: TFile, text: string) {
-    if (text !== this.map.get(file)) {
-      console.log(`File "${file.name}" load to holder`);
-      this.map.set(file, text);
-    }
-  }
+	set(file: TFile, text: string) {
+		if (text !== this.map.get(file)) {
+			console.log(`File "${file.name}" load to holder`);
+			this.map.set(file, text);
+		}
+	}
 
-  get(file: TFile) {
-    return this.map.get(file);
-  }
+	setByPath(filePath: string, text: string) {
+		const file = this.vault.getFileByPath(filePath);
+		if (file) {
+			this.set(file, text);
+		} else {
+			throw new Error(`file not found by path: ${filePath}.`);
+		}
+	}
 
-  getAllFiles(): TFile[] {
-    const keysIterator = this.map.keys();
-    const keysArray = Array.from(keysIterator);
-    return keysArray;
-  }
+	get(file: TFile) {
+		return this.map.get(file);
+	}
 
-  delete(file: TFile): boolean {
-    const existed = this.map.delete(file);
-    return existed;
-  }
+	getByPath(filePath: string) {
+		const file = this.vault.getFileByPath(filePath);
+		if (file) {
+			return this.get(file);
+		}
+		return undefined;
+	}
+
+	getAllFiles(): TFile[] {
+		const keysIterator = this.map.keys();
+		const keysArray = Array.from(keysIterator);
+		return keysArray;
+	}
+
+	delete(file: TFile): boolean {
+		const existed = this.map.delete(file);
+		return existed;
+	}
 }

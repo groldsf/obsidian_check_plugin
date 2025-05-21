@@ -7,6 +7,7 @@ import { CheckboxSyncPluginSettingTab } from "./ui/CheckboxSyncPluginSettingTab"
 import SyncController from "./SyncController";
 import { CheckboxSyncPluginSettings, DEFAULT_SETTINGS } from "./types";
 import { FileFilter } from "./FileFilter";
+import TextSyncPipeline from "./TextSyncPipeline";
 
 const DEBUG_FLAG_NAME = 'CHECKBOX_SYNC_DEBUG';
 
@@ -27,6 +28,7 @@ export default class CheckboxSyncPlugin extends Plugin {
 	private fileLoadEventHandler: FileLoadEventHandler;
 	private fileChangeEventHandler: FileChangeEventHandler;
 	private fileFilter: FileFilter;
+	private textSyncPipeline: TextSyncPipeline;
 
 	async onload() {
 		await this.loadSettings();
@@ -34,7 +36,8 @@ export default class CheckboxSyncPlugin extends Plugin {
 		this.fileFilter = new FileFilter(this.settings);
 		this.fileStateHolder = new FileStateHolder(this.app.vault);
 		this.checkboxUtils = new CheckboxUtils(this.settings);
-		this.syncController = new SyncController(this.app.vault, this.checkboxUtils, this.fileStateHolder, this.fileFilter);
+		this.textSyncPipeline = new TextSyncPipeline(this.checkboxUtils,this.fileStateHolder, this.fileFilter);
+		this.syncController = new SyncController(this.app.vault, this.checkboxUtils, this.textSyncPipeline);
 		this.fileLoadEventHandler = new FileLoadEventHandler(this, this.app, this.syncController, this.fileStateHolder);
 		this.fileChangeEventHandler = new FileChangeEventHandler(this, this.app, this.syncController, this.fileStateHolder);
 

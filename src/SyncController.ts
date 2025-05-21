@@ -1,24 +1,19 @@
 import { Mutex } from "async-mutex";
 import { Editor, EditorChange, MarkdownFileInfo, MarkdownView, TFile, Vault } from "obsidian";
 import { CheckboxUtils } from "./checkboxUtils";
-import FileStateHolder from "./FileStateHolder";
-import { FileFilter } from "./FileFilter";
+import TextSyncPipeline from "./TextSyncPipeline";
 
 export default class SyncController {
-	// private plugin: CheckboxSyncPlugin;//delete
 	private vault: Vault;
 	private checkboxUtils: CheckboxUtils;
-	private fileStateHolder: FileStateHolder;
-	private fileFilter: FileFilter;
+	textSyncPipeline: TextSyncPipeline
 
 	private mutex: Mutex;
 
-	constructor(vault: Vault, checkboxUtils: CheckboxUtils, fileStateHolder: FileStateHolder, fileFilter: FileFilter) {
-		// this.plugin = plugin;//delete
+	constructor(vault: Vault, checkboxUtils: CheckboxUtils, textSyncPipeline: TextSyncPipeline) {
 		this.vault = vault;
 		this.checkboxUtils = checkboxUtils;
-		this.fileStateHolder = fileStateHolder;
-		this.fileFilter = fileFilter;
+		this.textSyncPipeline = textSyncPipeline;
 		this.mutex = new Mutex();
 	}
 
@@ -27,27 +22,10 @@ export default class SyncController {
 			return;
 		}
 		await this.mutex.runExclusive(async () => {
-			const file = info.file!;
-			console.log(`sync editor "${file.path}" start.`);
-
-			const text = editor.getValue();
-
-			if (!this.fileFilter.isPathAllowed(file.path)) {
-				console.log(`sync editor "${file.path}" skip, path is not allowed.`);
-				this.fileStateHolder.set(file, text);
-				return;
-			}
-
-			const textBefore = this.fileStateHolder.get(file);
-
-			let newText = this.checkboxUtils.syncText(text, textBefore);
-			this.fileStateHolder.set(file, newText);
-
-			if (newText === text) {
-				console.log(`sync editor "${file.basename}" stop. new text equals old text.`);
-			} else {
-				this.editEditor(editor, text, newText);
-				console.log(`syncEditor "${file.basename}" stop.`);
+			const currentText = editor.getValue();
+			const resultingText = this.textSyncPipeline.applySyncLogic(currentText, info.file!.path);
+			if (resultingText !== currentText) {
+				this.editEditor(editor, currentText, resultingText);
 			}
 		});
 	}
@@ -57,21 +35,9 @@ export default class SyncController {
 			return;
 		}
 		await this.mutex.runExclusive(async () => {
-			console.log(`sync file "${file.path}" start.`);
-
-			if (!this.fileFilter.isPathAllowed(file.path)) {
-				console.log(`sync file "${file.path}" skip, path is not allowed.`);
-				const text = await this.vault.read(file);
-				this.fileStateHolder.set(file, text);
-			} else {
-				const newText = await this.vault.process(file, (text) => {
-					let textBefore = this.fileStateHolder.get(file);
-					let newText = this.checkboxUtils.syncText(text, textBefore);
-					return newText;
-				});
-				this.fileStateHolder.set(file, newText);
-			}
-			console.log(`sync file "${file.basename}" stop.`);
+			this.vault.process(file, (currentText) => {
+				return this.textSyncPipeline.applySyncLogic(currentText, file.path);
+			});
 		});
 	}
 
