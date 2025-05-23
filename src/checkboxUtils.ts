@@ -70,21 +70,21 @@ export class CheckboxUtils {
 	}
 
 	updateLineCheckboxStateWithInfo(line: string, shouldBeChecked: boolean, lineInfo: CheckboxLineInfo): string {
-		if (lineInfo.checkboxState !== CheckboxState.NoCheckbox) {
-			const checkedChar = this.settings.checkedSymbols.length > 0 ? this.settings.checkedSymbols[0] : 'x'; // 'x' как дефолт
-			const uncheckedChar = this.settings.uncheckedSymbols.length > 0 ? this.settings.uncheckedSymbols[0] : ' '; // ' ' как дефолт
-
-			const newCheckChar = shouldBeChecked ? checkedChar : uncheckedChar;
-			const pos = lineInfo.checkboxCharPosition!;
-			if (pos >= 0 && pos < line.length) {
-				return line.substring(0, pos) + newCheckChar + line.substring(pos + 1);
-			} else {
-				console.warn("updateLineCheckboxStateWithInfo: Invalid checkbox position in lineInfo for line:", line);
-				return line;
-			}
+		if (lineInfo.checkboxState === CheckboxState.NoCheckbox) {
+			console.warn("updateLineCheckboxStateWithInfo: Invalid lineInfo(no checkbox) for line:", line);
+			return line;
 		}
-		console.warn("updateLineCheckboxStateWithInfo: Invalid lineInfo(no checkbox) for line:", line);
-		return line;
+		const checkedChar = this.settings.checkedSymbols.length > 0 ? this.settings.checkedSymbols[0] : 'x'; // 'x' как дефолт
+		const uncheckedChar = this.settings.uncheckedSymbols.length > 0 ? this.settings.uncheckedSymbols[0] : ' '; // ' ' как дефолт
+
+		const newCheckChar = shouldBeChecked ? checkedChar : uncheckedChar;
+		const pos = lineInfo.checkboxCharPosition!;
+		if (pos >= 0 && pos < line.length) {
+			return line.substring(0, pos) + newCheckChar + line.substring(pos + 1);
+		} else {
+			console.warn("updateLineCheckboxStateWithInfo: Invalid checkbox position in lineInfo for line:", line);
+			return line;
+		}
 	}
 
 	propagateStateToChildren(text: string, parentLine: number): string {
