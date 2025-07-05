@@ -2,6 +2,7 @@ import { CheckboxState } from "src/types";
 import { CheckboxProcess } from "../interface/CheckboxProcess";
 import { Context } from "../model/Context";
 import { TreeNode } from "../model/TreeNode";
+import { CheckboxLine } from "../model/line/CheckboxLine";
 
 export class PropagateStateToParentProcess implements CheckboxProcess {
 
@@ -16,24 +17,42 @@ export class PropagateStateToParentProcess implements CheckboxProcess {
 		const nodes = view.getTreeNodes();
 
 		for (const node of nodes) {
-			this.propagateStateFromChildrens(node);
+			this.propagateStateToParent(node);
 		}
 	}
 
 	// возврат значения нужен для того, чтобы правильно обрабатывать случаи с "не чекбоксам", чтобы они передавали значения детей
-	propagateStateFromChildrens(node: TreeNode): CheckboxState {
+	propagateStateToParent(node: TreeNode): CheckboxState {
 		const line = node.getLine();
 
-		if (!node.hasChildren()) {
-			return line.getState();
+		// обходим всех детей
+		const childrenStates: CheckboxState[] = [];
+		for (const childrenNode of node.getChildrenNodes()) {
+			const childrenState = this.propagateStateToParent(childrenNode);
+			childrenStates.push(childrenState);
 		}
 
+		const newState = this.getNewState(line.getState(), childrenStates);
+		
+		if (line instanceof CheckboxLine){
+			line.setStateIfNotEquals(newState);
+		}
+		
+		return newState;
+	}
+
+	getNewState(actualState: CheckboxState, childrenStates: CheckboxState[]): CheckboxState {
+		if (actualState === CheckboxState.Ignore) {
+			return actualState;
+		}
+
+		// обходим всех детей
+		// если есть релевантные дети, то помечаем это и обновляем "состояние" Line
+		// "состояние" - потому что даже не чекбоксы могут иметь состояние через своих детей
 		let resultIfHasRelevantChildren = CheckboxState.Checked;
 		let hasRelevantChildren = false;
-		for (const childrenNode of node.getChildrenNodes()) {
-			const childrenState = this.propagateStateFromChildrens(childrenNode);
-
-			if (childrenState === CheckboxState.Checked || childrenState === CheckboxState.Unchecked) {
+		for (const childrenState of childrenStates) {
+			if (childrenState !== CheckboxState.Ignore && childrenState !== CheckboxState.NoCheckbox) {
 				hasRelevantChildren = true;
 			}
 
@@ -41,17 +60,12 @@ export class PropagateStateToParentProcess implements CheckboxProcess {
 				resultIfHasRelevantChildren = CheckboxState.Unchecked;
 			}
 		}
-		// делаем эту проверку только после обработки детей
-		if (line.getState() == CheckboxState.Ignore) {
-			return line.getState();
-		}
-		// проверка для нод, все дети которых не релевантны
-		if (!hasRelevantChildren) {
-			return line.getState();
-		}
 
-		line.setStateIfNotEquals(resultIfHasRelevantChildren);
-
-		return resultIfHasRelevantChildren;
+		if (hasRelevantChildren) {
+			return resultIfHasRelevantChildren;
+		} else {
+			return actualState;
+		}
 	}
+
 }

@@ -1,16 +1,33 @@
+import { CheckboxState } from "src/types";
 import { Line } from "../Line";
 
 export abstract class AbstractLine implements Line {
 
+  protected indentString: string;
+  protected tabSize: number;
   // длина отступа
   protected indent: number;
   // текст после чекбокса
-  protected listText: string;  
+  protected listText: string;
 
-  constructor(indent:number, lineText: string){
-    this.indent = indent;
+  constructor(indentString: string, lineText: string, tabSize: number) {
+    this.indentString = indentString;
     this.listText = lineText;
-    
+    this.tabSize = tabSize;
+
+    this.indent = this.getIndentFromString(indentString, tabSize);
+  }
+
+  private getIndentFromString(indentString: string, tabSize: number): number {    
+    let indent = 0;
+    for (const char of indentString) {
+      if (char === '\t') {
+        indent += tabSize;
+      } else if (char === ' ') {
+        indent += 1;
+      }
+    }
+    return indent;
   }
 
   getIndent(): number {
@@ -21,9 +38,7 @@ export abstract class AbstractLine implements Line {
     return this.listText;
   }
 
-  setText(lineText: string){
-    this.listText = lineText;
-  }
-
   abstract toResultText(): string;
+
+  abstract getState(): CheckboxState;
 }

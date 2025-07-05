@@ -1,15 +1,17 @@
 import { Line } from "./Line";
+import { CheckboxLine } from "./line/CheckboxLine";
 
 export class TreeNode {
 	private parent?: TreeNode;
-	private childrens: TreeNode[];
+	private childrens: TreeNode[] = [];
 
 	private line: Line;
+	// метка того, что Единичное изменение произошло в этой ноде или дочерних нодах
 	private modify = false;
 
 	constructor(line: Line) {
 		this.line = line;
-		if (line.isChange()) {
+		if (line instanceof CheckboxLine && line.isChange()) {
 			this.modify = true;
 		}
 	}

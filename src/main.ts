@@ -1,5 +1,4 @@
 import { Plugin, TFile } from "obsidian";
-import { CheckboxUtils } from "./checkboxUtils";
 import { FileChangeEventHandler } from "./events/FileChangeEventHandler";
 import { FileLoadEventHandler } from "./events/FileLoadEventHandler";
 import FileStateHolder from "./FileStateHolder";
@@ -8,6 +7,8 @@ import SyncController from "./SyncController";
 import { CheckboxSyncPluginSettings, DEFAULT_SETTINGS } from "./types";
 import { FileFilter } from "./FileFilter";
 import TextSyncPipeline from "./TextSyncPipeline";
+import { ICheckboxUtils } from "./core/interface/ICheckboxUtils";
+import { CheckboxUtils2 } from "./core/CheckboxUtils2";
 
 const DEBUG_FLAG_NAME = 'CHECKBOX_SYNC_DEBUG';
 
@@ -23,7 +24,7 @@ export default class CheckboxSyncPlugin extends Plugin {
 	private _settings: CheckboxSyncPluginSettings;
 
 	private syncController: SyncController;
-	private checkboxUtils: CheckboxUtils;
+	private checkboxUtils: ICheckboxUtils;
 	private fileStateHolder: FileStateHolder;
 	private fileLoadEventHandler: FileLoadEventHandler;
 	private fileChangeEventHandler: FileChangeEventHandler;
@@ -35,9 +36,9 @@ export default class CheckboxSyncPlugin extends Plugin {
 
 		this.fileFilter = new FileFilter(this.settings);
 		this.fileStateHolder = new FileStateHolder(this.app.vault);
-		this.checkboxUtils = new CheckboxUtils(this.settings);
+		this.checkboxUtils = new CheckboxUtils2(this.settings);
 		this.textSyncPipeline = new TextSyncPipeline(this.checkboxUtils,this.fileStateHolder, this.fileFilter);
-		this.syncController = new SyncController(this.app.vault, this.checkboxUtils, this.textSyncPipeline);
+		this.syncController = new SyncController(this.app.vault, this.textSyncPipeline);
 		this.fileLoadEventHandler = new FileLoadEventHandler(this, this.app, this.syncController, this.fileStateHolder);
 		this.fileChangeEventHandler = new FileChangeEventHandler(this, this.app, this.syncController, this.fileStateHolder);
 

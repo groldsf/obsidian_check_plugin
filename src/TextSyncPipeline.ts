@@ -1,14 +1,14 @@
-import { CheckboxUtils } from "./checkboxUtils";
+import { ICheckboxUtils } from "./core/interface/ICheckboxUtils";
 import { FileFilter } from "./FileFilter";
 import { IFilePathStateHolder } from "./IFilePathStateHolder";
 
 export default class TextSyncPipeline {
-	private checkboxUtils: CheckboxUtils;
+	private checkboxUtils: ICheckboxUtils;
 	private fileStateHolder: IFilePathStateHolder;
 	private fileFilter: FileFilter;
 
 
-	constructor(checkboxUtils: CheckboxUtils, fileStateHolder: IFilePathStateHolder, fileFilter: FileFilter) {
+	constructor(checkboxUtils: ICheckboxUtils, fileStateHolder: IFilePathStateHolder, fileFilter: FileFilter) {
 		this.checkboxUtils = checkboxUtils;
 		this.fileStateHolder = fileStateHolder;
 		this.fileFilter = fileFilter;

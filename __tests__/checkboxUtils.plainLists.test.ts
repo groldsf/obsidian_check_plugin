@@ -1,6 +1,6 @@
 // checkboxUtils.plainLists.test.ts
 
-import { CheckboxUtils } from '../src/checkboxUtils';
+import { CheckboxUtils } from '../src/core/checkboxUtils';
 import { CheckboxState, CheckboxSyncPluginSettings, DEFAULT_SETTINGS } from '../src/types';
 
 // Вспомогательная функция для создания настроек с переопределениями

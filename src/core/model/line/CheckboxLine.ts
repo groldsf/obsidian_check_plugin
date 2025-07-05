@@ -2,32 +2,31 @@ import { CheckboxState, CheckboxSyncPluginSettings } from "src/types";
 import { AbstractLine } from "./AbstractLine";
 
 export class CheckboxLine extends AbstractLine {
-  
+
   // символы перед чекбоксом
   private marker: string;
   // символ в чекбоксе
   private checkChar: string;
   // позиция символа чекбокса в исходной строке
-  private checkboxCharPosition: number;
+  // private checkboxCharPosition: number;
   // интерпретация символа чекбокса(или его отсутствия)
   private checkboxState: CheckboxState;
   // интерпретация состояния чекбокса(или его отсутствия)
   // private isChecked?: boolean | undefined;
-  
 
-  private hasChange = false;  
+  // метка того, что Единичное изменение произошло в этой строке
+  private hasChange = false;
 
   protected settings: Readonly<CheckboxSyncPluginSettings>;
 
-  constructor(indent: number, marker: string, checkChar: string, lineText: string, settings: Readonly<CheckboxSyncPluginSettings>) {
-    super(indent, lineText);
+  constructor(indentString:string, marker: string, checkChar: string, listItemText: string, settings: Readonly<CheckboxSyncPluginSettings>) {
+    super(indentString, listItemText, settings.tabSize);
     this.marker = marker;
     this.checkChar = checkChar;
     this.settings = settings;
 
-    this.checkboxCharPosition = ;
-    this.checkboxState = ;
-    throw new Error("Constructor not implemented.");
+    // this.checkboxCharPosition = indent + marker.length + 2;
+    this.checkboxState = this.getCheckboxState(checkChar);
   }
 
   isChange(): boolean {
@@ -38,36 +37,12 @@ export class CheckboxLine extends AbstractLine {
     this.hasChange = hasChange;
   }
 
-  
-
-  isCheckbox(): boolean {
-    return this.checkboxState !== CheckboxState.NoCheckbox;
-  }
 
   setState(state: CheckboxState): void {
     // обновить checkboxState
     this.checkboxState = state;
     // обновить checkChar
-    switch (state) {
-      case CheckboxState.Checked:
-        this.checkChar = this.settings.checkedSymbols.length > 0 ? this.settings.checkedSymbols[0] : 'x'; // 'x' как дефолт
-        break;
-      case CheckboxState.Unchecked:
-        this.checkChar = this.settings.uncheckedSymbols.length > 0 ? this.settings.uncheckedSymbols[0] : ' '; // ' ' как дефолт
-        break;
-      case CheckboxState.Ignore:
-        if (this.settings.ignoreSymbols.length > 0) {
-          this.checkChar = this.settings.ignoreSymbols[0];
-        } else {
-          throw new Error("Not found ignore char.");
-        }
-        break;
-      case CheckboxState.NoCheckbox:
-        this.checkChar = undefined;
-        break;
-      default:
-        throw new Error(`Unexpected value for parameter [state] = ${state}.`);
-    }
+    this.checkChar = this.getCharFromState(state);
   }
 
   setStateIfNotEquals(newState: CheckboxState) {
@@ -80,5 +55,42 @@ export class CheckboxLine extends AbstractLine {
     return this.checkboxState;
   }
 
-  
+  toResultText(): string {
+    // const spaces = ' '.repeat(this.indent);
+    const resultText = this.indentString + this.marker + " [" + this.checkChar + "] " + this.listText;
+    return resultText;
+  }
+
+  private getCheckboxState(text: string): CheckboxState {
+    if (this.settings.checkedSymbols.includes(text)) {
+      return CheckboxState.Checked;
+    }
+    if (this.settings.uncheckedSymbols.includes(text)) {
+      return CheckboxState.Unchecked;
+    }
+    if (this.settings.ignoreSymbols.includes(text)) {
+      return CheckboxState.Ignore;
+    }
+    return this.settings.unknownSymbolPolicy;
+  }
+
+  private getCharFromState(state: CheckboxState): string {
+    switch (state) {
+      case CheckboxState.Checked:
+        return this.settings.checkedSymbols.length > 0 ? this.settings.checkedSymbols[0] : 'x'; // 'x' как дефолт
+      case CheckboxState.Unchecked:
+        return this.settings.uncheckedSymbols.length > 0 ? this.settings.uncheckedSymbols[0] : ' '; // ' ' как дефолт
+      case CheckboxState.Ignore:
+        if (this.settings.ignoreSymbols.length > 0) {
+          return this.settings.ignoreSymbols[0];
+        } else {
+          throw new Error("Not found ignore char.");
+        }
+      case CheckboxState.NoCheckbox:
+        throw new Error(`Unexpected value for parameter [state] = ${state}. "NoCheckbox".`);
+      default:
+        throw new Error(`Unexpected value for parameter [state] = ${state}.`);
+    }
+  }
+
 }

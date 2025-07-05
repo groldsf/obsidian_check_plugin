@@ -1,4 +1,6 @@
-import { CheckboxState, CheckboxSyncPluginSettings } from "./types";
+import { CheckboxState, CheckboxSyncPluginSettings } from "src/types";
+import { ICheckboxUtils } from "./interface/ICheckboxUtils";
+
 
 export interface CheckboxLineInfo {
 	indent: number;
@@ -10,7 +12,7 @@ export interface CheckboxLineInfo {
 	listItemText?: string;
 }
 
-export class CheckboxUtils {
+export class CheckboxUtils implements ICheckboxUtils {
 	private settings: Readonly<CheckboxSyncPluginSettings>;
 	constructor(settings: Readonly<CheckboxSyncPluginSettings>) {
 		this.settings = settings;

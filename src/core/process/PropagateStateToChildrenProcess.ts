@@ -2,6 +2,7 @@ import { CheckboxState } from "src/types";
 import { CheckboxProcess } from "../interface/CheckboxProcess";
 import { Context } from "../model/Context";
 import { TreeNode } from "../model/TreeNode";
+import { CheckboxLine } from "../model/line/CheckboxLine";
 
 export class PropagateStateToChildrenProcess implements CheckboxProcess {
 
@@ -21,46 +22,51 @@ export class PropagateStateToChildrenProcess implements CheckboxProcess {
 
 		const nodes = view.getTreeNodes();
 		for (const node of nodes) {
-			this.propageteStateToChildrenFromChangeLineNode(node);
+			this.propagateStateToChildrenFromChangeLineNode(node);
 		}
 	}
 
 	// находит изменённую Line, если она существует и вызывает от неё propagateStateToChildren
-	propageteStateToChildrenFromChangeLineNode(node: TreeNode) {
+	propagateStateToChildrenFromChangeLineNode(node: TreeNode) {
 		if (!node.isModify()) {
 			return;
 		}
 		const line = node.getLine();
 		// если line изменён
-		if (line.isChange()) {
+		if (line instanceof CheckboxLine && line.isChange()) {
 			// значит мы нашли нужную ноду
-			this.propagateStateToChildren(node);
+			this.propagateStateToChildrenFromNode(node);
 		} else {
 			// иначе ищем вглубь среди детей
 			const childrens = node.getChildrenNodes();
 			for (const children of childrens) {
-				this.propageteStateToChildrenFromChangeLineNode(children);
+				this.propagateStateToChildrenFromChangeLineNode(children);
 			}
 		}
 	}
 
 
-	propagateStateToChildren(modifiedNode: TreeNode) {
-		const state = modifiedNode.getLine().getState();
+	propagateStateToChildrenFromNode(modifiedNode: TreeNode) {
+		const line = modifiedNode.getLine();
+		if (!(line instanceof CheckboxLine)) {
+			console.warn(`propagateStateToChildren from !CheckboxLine.`);
+			return;
+		}
+		const state = line.getState();
 		if (state === CheckboxState.Ignore || state === CheckboxState.NoCheckbox) {
 			console.warn(`propagateStateToChildren ${state.toString()}`);
 			return;
 		}
-		this.propagateToChildren(modifiedNode, state);
+		this.propagateStateToChildren(modifiedNode, state);
 	}
 
-	propagateToChildren(node: TreeNode, state: CheckboxState) {
+	propagateStateToChildren(node: TreeNode, state: CheckboxState) {
 		const line = node.getLine();
-		if (line.isCheckbox()) {
+		if (line instanceof CheckboxLine) {
 			line.setStateIfNotEquals(state);
 		}
 		for (const childrenNode of node.getChildrenNodes()) {
-			this.propagateToChildren(childrenNode, state);
+			this.propagateStateToChildren(childrenNode, state);
 		}
 	}
 }

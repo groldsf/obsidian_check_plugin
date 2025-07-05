@@ -1,3 +1,4 @@
+import { CheckboxState } from "src/types";
 import { AbstractLine } from "./AbstractLine";
 
 export class ListLine extends AbstractLine {
@@ -5,8 +6,8 @@ export class ListLine extends AbstractLine {
   // символы перед текстом
   private marker: string;
 
-  constructor(indent: number, marker: string, listText: string) {
-    super(indent, listText);
+  constructor(indentString: string, marker: string, listText: string, tabSize: number) {
+    super(indentString, listText, tabSize);
     this.marker = marker;
   }
 
@@ -19,9 +20,12 @@ export class ListLine extends AbstractLine {
   }
 
   toResultText(): string {
-    const spaces = ' '.repeat(this.indent);
-
-    const resultText = spaces + this.marker + " " + this.listText;
+    // const spaces = ' '.repeat(this.indent);
+    const resultText = this.indentString + this.marker + " " + this.listText;
     return resultText;
+  }
+
+  getState(): CheckboxState {
+    return CheckboxState.NoCheckbox;
   }
 }

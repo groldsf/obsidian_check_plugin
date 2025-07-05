@@ -1,4 +1,4 @@
-import { CheckboxLineInfo, CheckboxUtils } from '../src/checkboxUtils'; // Путь к вашему файлу
+import { CheckboxLineInfo, CheckboxUtils } from '../src/core/checkboxUtils'; // Путь к вашему файлу
 import { CheckboxState, CheckboxSyncPluginSettings, DEFAULT_SETTINGS } from '../src/types'; // Путь к вашему файлу типов
 
 // Вспомогательная функция для создания настроек с переопределениями

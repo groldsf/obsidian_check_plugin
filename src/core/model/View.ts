@@ -2,10 +2,16 @@ import { TreeNode } from "./TreeNode";
 
 export class View {
 	private treeNodes: TreeNode[];
+	// метка того, что Единичное изменение произошло в этой View
 	private modify: boolean;
 
-	constructor(treeNodes: TreeNode[], isModify: boolean) {
+	constructor(treeNodes: TreeNode[]) {
 		this.treeNodes = treeNodes;
+		// проверить ноды на modify
+		let isModify = false;
+		for (const treeNode of treeNodes) {
+			isModify = isModify || treeNode.isModify();
+		}
 		this.modify = isModify;
 	}
 

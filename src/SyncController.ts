@@ -1,18 +1,15 @@
 import { Mutex } from "async-mutex";
 import { Editor, EditorChange, MarkdownFileInfo, MarkdownView, TFile, Vault } from "obsidian";
-import { CheckboxUtils } from "./checkboxUtils";
 import TextSyncPipeline from "./TextSyncPipeline";
 
 export default class SyncController {
 	private vault: Vault;
-	private checkboxUtils: CheckboxUtils;
 	textSyncPipeline: TextSyncPipeline
 
 	private mutex: Mutex;
 
-	constructor(vault: Vault, checkboxUtils: CheckboxUtils, textSyncPipeline: TextSyncPipeline) {
+	constructor(vault: Vault, textSyncPipeline: TextSyncPipeline) {
 		this.vault = vault;
-		this.checkboxUtils = checkboxUtils;
 		this.textSyncPipeline = textSyncPipeline;
 		this.mutex = new Mutex();
 	}
@@ -47,7 +44,7 @@ export default class SyncController {
 		const newLines = newText.split("\n");
 		const oldLines = oldText.split("\n");
 
-		const diffIndexes = this.checkboxUtils.findDifferentLineIndexes(oldLines, newLines);
+		const diffIndexes = this.findDifferentLineIndexes(oldLines, newLines);
 
 		const changes: EditorChange[] = [];
 
@@ -71,6 +68,21 @@ export default class SyncController {
 				to: { line: lastDifferentLineIndex, ch: 0 }
 			});
 		}
+	}
+
+	private findDifferentLineIndexes(lines1: string[], lines2: string[]): number[] {
+		if (lines1.length !== lines2.length) {
+			throw new Error("the length of the lines must be equal");
+		}
+
+		const length = lines1.length;
+		const result: number[] = [];
+		for (let i = 0; i < length; i++) {
+			if (lines1[i] !== lines2[i]) {
+				result.push(i);
+			}
+		}
+		return result;
 	}
 
 }
