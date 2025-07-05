@@ -22,7 +22,7 @@ export default class SyncController {
 			const currentText = editor.getValue();
 			const resultingText = this.textSyncPipeline.applySyncLogic(currentText, info.file!.path);
 			if (resultingText !== currentText) {
-				this.editEditor(editor, currentText, resultingText);
+				await this.editEditor(editor, info as MarkdownView, currentText, resultingText);
 			}
 		});
 	}
@@ -32,13 +32,13 @@ export default class SyncController {
 			return;
 		}
 		await this.mutex.runExclusive(async () => {
-			this.vault.process(file, (currentText) => {
+			await this.vault.process(file, (currentText) => {
 				return this.textSyncPipeline.applySyncLogic(currentText, file.path);
 			});
 		});
 	}
 
-	private editEditor(editor: Editor, oldText: string, newText: string) {
+	private async editEditor(editor: Editor, info: MarkdownView, oldText: string, newText: string) {
 		const cursor = editor.getCursor();
 
 		const newLines = newText.split("\n");
@@ -68,6 +68,7 @@ export default class SyncController {
 				to: { line: lastDifferentLineIndex, ch: 0 }
 			});
 		}
+		await info.save();
 	}
 
 	private findDifferentLineIndexes(lines1: string[], lines2: string[]): number[] {
