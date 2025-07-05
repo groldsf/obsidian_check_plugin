@@ -91,10 +91,8 @@ export class ContextFactory {
 
 		// если новая и старая строка чекбокс
 		if (oldLine instanceof CheckboxLine && actualLine instanceof CheckboxLine) {
-			// если текст остался старым
 			// если изменилось состояние чекбокса
 			if (
-				oldLine.getText() === actualLine.getText() &&
 				oldLine.getState() !== actualLine.getState()
 			) {
 				actualLine.setChange(true);
