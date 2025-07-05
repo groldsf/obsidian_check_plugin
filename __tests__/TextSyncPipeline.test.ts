@@ -1,4 +1,4 @@
-import { CheckboxUtils } from "src/checkboxUtils";
+import { CheckboxUtils } from "src/core/checkboxUtils";
 import { FileFilter } from "src/FileFilter";
 import TextSyncPipeline from "src/TextSyncPipeline";
 import { CheckboxSyncPluginSettings, DEFAULT_SETTINGS } from "src/types";

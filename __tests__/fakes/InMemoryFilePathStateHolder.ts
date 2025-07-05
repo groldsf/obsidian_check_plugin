@@ -8,13 +8,13 @@ export class InMemoryFilePathStateHolder implements IFilePathStateHolder {
 	}
 
 	public setByPath(filePath: string, text: string): void {
-		console.log(`InMemoryFileStateHolder: Setting state for "${filePath}"`);
+		// console.log(`InMemoryFileStateHolder: Setting state for "${filePath}"`);
 		this.states.set(filePath, text);
 	}
 
 	public getByPath(filePath: string): string | undefined {
 		const state = this.states.get(filePath);
-		console.log(`InMemoryFileStateHolder: Getting state for "${filePath}". Found: ${!!state}`);
+		// console.log(`InMemoryFileStateHolder: Getting state for "${filePath}". Found: ${!!state}`);
 		return state;
 	}
 

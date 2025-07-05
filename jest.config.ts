@@ -3,9 +3,17 @@
  * https://jestjs.io/docs/configuration
  */
 
-import type {Config} from 'jest';
+import type { Config } from 'jest';
 
 const config: Config = {
+
+  reporters: [
+    'default',
+    ['jest-html-reporter', {
+      pageTitle: 'Test Report',
+      outputPath: './test-report.html',
+    }]
+  ],
 
   // Automatically clear mock calls, instances, contexts and results before every test
   clearMocks: true,
@@ -18,14 +26,14 @@ const config: Config = {
 
   // Indicates which provider should be used to instrument code for coverage
   // coverageProvider: "v8",
-	coverageProvider: "babel",
+  coverageProvider: "babel",
 
   // An array of file extensions your modules use
   moduleFileExtensions: [
     "ts",
     "tsx",
     "js",
-    "jsx",    
+    "jsx",
     "json",
     "node"
   ],
@@ -43,11 +51,11 @@ const config: Config = {
     '^src/(.*)$': '<rootDir>/src/$1',
   },
 
-	testPathIgnorePatterns: [
+  testPathIgnorePatterns: [
     "/node_modules/", // Хорошо иметь это явно, хотя Jest часто делает это по умолчанию
     "/__tests__/fakes/" // Исключаем папку fakes внутри __tests__
   ],
-	
+
 };
 
 export default config;

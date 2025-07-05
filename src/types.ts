@@ -1,4 +1,5 @@
 export interface CheckboxSyncPluginSettings {
+  tabSize: number,
   enableAutomaticParentState: boolean;
   enableAutomaticChildState: boolean;
   checkedSymbols: string[];
@@ -18,6 +19,7 @@ export enum CheckboxState {
 }
 
 export const DEFAULT_SETTINGS: CheckboxSyncPluginSettings = {
+  tabSize: 4,
   enableAutomaticParentState: true,
   enableAutomaticChildState: true,
   checkedSymbols: ['x'],
