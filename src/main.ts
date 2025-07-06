@@ -9,6 +9,7 @@ import { FileFilter } from "./FileFilter";
 import TextSyncPipeline from "./TextSyncPipeline";
 import { ICheckboxUtils } from "./core/interface/ICheckboxUtils";
 import { CheckboxUtils2 } from "./core/CheckboxUtils2";
+import { GlobalVars } from "./GlobalVars";
 
 const DEBUG_FLAG_NAME = 'CHECKBOX_SYNC_DEBUG';
 
@@ -32,12 +33,13 @@ export default class CheckboxSyncPlugin extends Plugin {
 	private textSyncPipeline: TextSyncPipeline;
 
 	async onload() {
+		GlobalVars.APP = this.app;
 		await this.loadSettings();
 
 		this.fileFilter = new FileFilter(this.settings);
 		this.fileStateHolder = new FileStateHolder(this.app.vault);
 		this.checkboxUtils = new CheckboxUtils2(this.settings);
-		this.textSyncPipeline = new TextSyncPipeline(this.checkboxUtils,this.fileStateHolder, this.fileFilter);
+		this.textSyncPipeline = new TextSyncPipeline(this.checkboxUtils, this.fileStateHolder, this.fileFilter);
 		this.syncController = new SyncController(this.app.vault, this.textSyncPipeline);
 		this.fileLoadEventHandler = new FileLoadEventHandler(this, this.app, this.syncController, this.fileStateHolder);
 		this.fileChangeEventHandler = new FileChangeEventHandler(this, this.app, this.syncController, this.fileStateHolder);
@@ -62,7 +64,7 @@ export default class CheckboxSyncPlugin extends Plugin {
 		this.fileFilter.updateSettings(this.settings);
 		await this.saveData(this.settings);
 
-		
+
 
 		if (this.settings.enableAutomaticFileSync) {
 			//надо пересинхронизировать все файлы в кеше

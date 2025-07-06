@@ -1,4 +1,4 @@
-import { CheckboxState } from "src/types";
+import { CheckboxState, CheckboxSyncPluginSettings } from "src/types";
 import { Line } from "../Line";
 
 export abstract class AbstractLine implements Line {
@@ -10,12 +10,12 @@ export abstract class AbstractLine implements Line {
   // текст после чекбокса
   protected listText: string;
 
-  constructor(indentString: string, lineText: string, tabSize: number) {
+  constructor(indentString: string, lineText: string, settings: Readonly<CheckboxSyncPluginSettings>) {
     this.indentString = indentString;
     this.listText = lineText;
-    this.tabSize = tabSize;
+    this.tabSize = settings.tabSize;
 
-    this.indent = this.getIndentFromString(indentString, tabSize);
+    this.indent = this.getIndentFromString(indentString, this.tabSize);
   }
 
   private getIndentFromString(indentString: string, tabSize: number): number {    

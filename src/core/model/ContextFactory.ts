@@ -9,9 +9,6 @@ import { TextLine } from "./line/TextLine";
 
 export class ContextFactory {
 
-	static readonly CHECKBOX_REGEXP = /^(\s*)([*+-]|\d+\.) \[(.)\]\s(.*)$/;
-	static readonly LIST_ITEM_REGEXP = /^(\s*)([*+-]|\d+\.)\s+(?!\[.?\])(.*)$/;
-	static readonly TEXT_REGEXP = /^(\s*)(.*)$/;
 
 	private constructor() {
 	}
@@ -110,31 +107,18 @@ export class ContextFactory {
 	}
 
 	// создаёт объект из одного из классов, кто реализует Line в зависимости от строки.
-	static createLineFromTextLine(textLine: string, settings: Readonly<CheckboxSyncPluginSettings>): Line {
-		const checkboxMatch = textLine.match(this.CHECKBOX_REGEXP);
-		if (checkboxMatch) {
-			const indentString = checkboxMatch[1];
-			const marker = checkboxMatch[2];
-			const checkChar = checkboxMatch[3];
-
-			const listItemText = checkboxMatch[4].trimStart();
-
-			return new CheckboxLine(indentString, marker, checkChar, listItemText, settings);
+	static createLineFromTextLine(stringLine: string, settings: Readonly<CheckboxSyncPluginSettings>): Line {
+		const checkboxLine = CheckboxLine.createFromLine(stringLine, settings);
+		if (checkboxLine) {
+			return checkboxLine;
 		}
-		const listItemMatch = textLine.match(this.LIST_ITEM_REGEXP);
-		if (listItemMatch) {
-			const indentString = listItemMatch[1];
-			const marker = listItemMatch[2];
-			const listItemText = listItemMatch[3].trimStart();
-
-			return new ListLine(indentString, marker, listItemText, settings.tabSize);
+		const listLine = ListLine.createFromLine(stringLine, settings);
+		if (listLine) {
+			return listLine;
 		}
 
-		const textLineMatch = textLine.match(this.TEXT_REGEXP)!;
-		const indentString = textLineMatch[1];
-		const itemText = textLineMatch[2];
-		return new TextLine(indentString, itemText, settings.tabSize);
-
+		const textLine = TextLine.createFromLine(stringLine, settings)!;
+		return textLine;
 	}
 
 	private static findSingleDiffLineIndex(lines1: string[], lines2: string[]): number | undefined {

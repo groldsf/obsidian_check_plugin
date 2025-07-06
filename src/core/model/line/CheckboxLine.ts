@@ -1,5 +1,7 @@
 import { CheckboxState, CheckboxSyncPluginSettings } from "src/types";
 import { AbstractLine } from "./AbstractLine";
+import { GlobalVars } from "src/GlobalVars";
+import { CHECKBOX_REGEXP } from "src/core/Regexp";
 
 export class CheckboxLine extends AbstractLine {
 
@@ -19,14 +21,26 @@ export class CheckboxLine extends AbstractLine {
 
   protected settings: Readonly<CheckboxSyncPluginSettings>;
 
-  constructor(indentString:string, marker: string, checkChar: string, listItemText: string, settings: Readonly<CheckboxSyncPluginSettings>) {
-    super(indentString, listItemText, settings.tabSize);
+  constructor(indentString: string, marker: string, checkChar: string, listItemText: string, settings: Readonly<CheckboxSyncPluginSettings>) {
+    super(indentString, listItemText, settings);
     this.marker = marker;
     this.checkChar = checkChar;
     this.settings = settings;
 
     // this.checkboxCharPosition = indent + marker.length + 2;
     this.checkboxState = this.getCheckboxState(checkChar);
+  }
+
+  static createFromLine(textLine: string, settings: Readonly<CheckboxSyncPluginSettings>): CheckboxLine | null {
+    const checkboxMatch = textLine.match(CHECKBOX_REGEXP);
+    if (checkboxMatch) {
+      const indentString = checkboxMatch[1];
+      const marker = checkboxMatch[2];
+      const checkChar = checkboxMatch[3];
+      const listItemText = checkboxMatch[4].trimStart();
+      return new CheckboxLine(indentString, marker, checkChar, listItemText, settings);
+    }
+    return null;
   }
 
   isChange(): boolean {
@@ -38,7 +52,35 @@ export class CheckboxLine extends AbstractLine {
   }
 
 
+  private static getNewCheckboxLineFromTasksApi(api: any, checkboxLine: CheckboxLine, targetState: CheckboxState): CheckboxLine|null {
+    let line: CheckboxLine | null = checkboxLine;
+    const startChar = checkboxLine.checkChar;
+    while (true) {
+      const textLine = line.toResultText();
+      const newTextLine = api.executeToggleTaskDoneCommand(textLine, null);
+      const newBox = CheckboxLine.createFromLine(newTextLine, line.settings);
+      if (!newBox) {
+        return null;
+      }
+      if (newBox.checkboxState === targetState){
+        return newBox;
+      }
+      if (newBox.checkChar === startChar){
+        return null;
+      }
+      line = newBox;
+    }
+  }
+
   setState(state: CheckboxState): void {
+    const taskPlugin = GlobalVars.APP?.plugins.plugins['obsidian-tasks-plugin'];
+    if (taskPlugin) {
+      const api = taskPlugin.apiV1;
+      const res = CheckboxLine.getNewCheckboxLineFromTasksApi(api, this, state);
+      if (res !== null){
+        this.listText = res.listText;
+      }
+    }
     // обновить checkboxState
     this.checkboxState = state;
     // обновить checkChar
