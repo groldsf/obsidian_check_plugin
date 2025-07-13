@@ -309,7 +309,7 @@ describe('CheckboxUtils2', () => {
 		});
 
 		describe('bags', () => {
-			it('bag 1', () => {
+			it('bag 1 propagete modify to grandparent', () => {
 				const utils = new CheckboxUtils2(createSettings({
 					enableAutomaticChildState: true,
 					enableAutomaticParentState: true,
