@@ -35,8 +35,14 @@ export class ContextFactory {
 	private static createFlatNodesFromLines(lines: Line[]): TreeNode[] {
 		const nodes: TreeNode[] = [];
 		const stack: TreeNode[] = [];
+
+		let changeNode: null | TreeNode = null;
+
 		for (const line of lines) {
 			const node = new TreeNode(line);
+			if (line instanceof CheckboxLine && line.isChange()) {
+				changeNode = node;
+			}
 
 			// найти родителя
 			let parent = undefined;
@@ -55,6 +61,12 @@ export class ContextFactory {
 
 			nodes.push(node);
 			stack.push(node);
+		}
+
+		let parentChangeNode = changeNode?.getParent();
+		while (parentChangeNode) {
+			parentChangeNode.setModify(true);
+			parentChangeNode = parentChangeNode?.getParent();
 		}
 		return nodes;
 	}
@@ -93,6 +105,8 @@ export class ContextFactory {
 				oldLine.getState() !== actualLine.getState()
 			) {
 				actualLine.setChange(true);
+				const text = actualLine.toResultText();
+				console.log(`ContextFactory:markChangeIfNeeded: ${text} is change`);
 			}
 		}
 

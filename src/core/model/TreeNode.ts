@@ -24,6 +24,10 @@ export class TreeNode {
 		return this.modify;
 	}
 
+	setModify(isModify:boolean){
+		this.modify = isModify;
+	}
+
 	private setParent(parent: TreeNode) {
 		this.parent = parent;
 	}
@@ -35,8 +39,6 @@ export class TreeNode {
 	addChildren(children: TreeNode) {
 		this.childrens.push(children);
 		children.setParent(this);
-
-		this.modify = this.modify || children.isModify();
 	}
 
 	hasChildren(): boolean {

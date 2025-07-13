@@ -146,7 +146,7 @@ describe('CheckboxUtils2', () => {
 			expect(utils.syncText(textBefore, textBefore)).toBe(textBefore);
 		});
 
-		it('checkbox, list', ()=> {
+		it('checkbox, list', () => {
 			const utils = new CheckboxUtils2(createSettings({
 				enableAutomaticChildState: true,
 				enableAutomaticParentState: true,
@@ -171,7 +171,7 @@ describe('CheckboxUtils2', () => {
 			expect(utils.syncText(actualText, textBefore)).toBe(expectedText);
 		});
 
-		it('checkbox, plain text', ()=> {
+		it('checkbox, plain text', () => {
 			const utils = new CheckboxUtils2(createSettings({
 				enableAutomaticChildState: true,
 				enableAutomaticParentState: true,
@@ -305,7 +305,50 @@ describe('CheckboxUtils2', () => {
 					'  Child3',
 				].join('\n');
 				expect(utils.syncText(actualText, textBefore)).toBe(expected);
-			});			
+			});
+		});
+
+		describe('bags', () => {
+			it('bag 1', () => {
+				const utils = new CheckboxUtils2(createSettings({
+					enableAutomaticChildState: true,
+					enableAutomaticParentState: true,
+				}));
+				const oldText = [
+					'- [ ] 3д детали',
+					'	- [ ] грузики для веревки ^be5c11',
+					'	- [ ] привод жалюзи ^202ccf',
+					'		- [ ] 3д детали',
+					'			- [ ] корпус',
+					'			- [ ] бобина для веревки',
+					'		- [ ] основной редуктор',
+					'		- [ ] червячный редуктор',
+					'		- [ ] подшипник',
+				].join('\n');
+				const actualText = [
+					'- [ ] 3д детали',
+					'	- [ ] грузики для веревки ^be5c11',
+					'	- [ ] привод жалюзи ^202ccf',
+					'		- [x] 3д детали',
+					'			- [ ] корпус',
+					'			- [ ] бобина для веревки',
+					'		- [ ] основной редуктор',
+					'		- [ ] червячный редуктор',
+					'		- [ ] подшипник',
+				].join('\n');
+				const expected = [
+					'- [ ] 3д детали',
+					'	- [ ] грузики для веревки ^be5c11',
+					'	- [ ] привод жалюзи ^202ccf',
+					'		- [x] 3д детали',
+					'			- [x] корпус',
+					'			- [x] бобина для веревки',
+					'		- [ ] основной редуктор',
+					'		- [ ] червячный редуктор',
+					'		- [ ] подшипник',
+				].join('\n');
+				expect(utils.syncText(actualText, oldText)).toBe(expected);
+			});
 		});
 
 	});

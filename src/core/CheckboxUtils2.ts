@@ -19,10 +19,21 @@ export class CheckboxUtils2 implements ICheckboxUtils {
 		if (text === textBefore) {
 			return text;
 		}
+		console.log(`text before:`);
+		console.log(text);
+		console.log("___");
+
 		const context = ContextFactory.createContext(text, textBefore, this.settings);
 
 		this.propagateStateToChildrenProcess.process(context);
+
+
 		this.propagateStateToParentProcess.process(context);
+
+		console.log(`text after:`);
+		const res = context.getResultText()
+		console.log(res);
+		console.log("___");
 
 		return context.getResultText();
 	}

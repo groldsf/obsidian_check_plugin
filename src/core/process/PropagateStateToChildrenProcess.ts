@@ -11,12 +11,14 @@ export class PropagateStateToChildrenProcess implements CheckboxProcess {
 			return;
 		}
 		if (!context.textBeforeChangeIsPresent()) {
+			console.log("PropagateStateToChildrenProcess: textBeforeChange is not present");
 			return;
 		}
 		// получить представление текста
 		const view = context.getView();
 
 		if (!view.isModify()) {
+			console.log("PropagateStateToChildrenProcess: not modify");
 			return;
 		}
 
