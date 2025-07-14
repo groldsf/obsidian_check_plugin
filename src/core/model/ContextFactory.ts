@@ -19,20 +19,21 @@ export class ContextFactory {
 
 	static createView(context: Context) {
 		const lines = context.getLines();
-		const treeNodes = this.createRootTreeNodesFromLines(lines);
-		return new View(treeNodes);
+		const [rootNodes, changeNode] = this.createRootTreeNodesFromLines(lines);
+		return new View(rootNodes, changeNode);
 	}
 
 	// создаёт TreeNode из Line
-	// возвращает только корневые узлы
-	private static createRootTreeNodesFromLines(lines: Line[]): TreeNode[] {
-		const flatTreeNodes = this.createFlatNodesFromLines(lines);
-		return flatTreeNodes.filter(node => !node.getParent());
+	// возвращает только корневые узлы и изменённую строку
+	private static createRootTreeNodesFromLines(lines: Line[]): [roots: TreeNode[], changeNode: TreeNode | null] {
+		const [flatTreeNodes, changeNode] = this.createFlatNodesFromLines(lines);
+		const rootNodes = flatTreeNodes.filter(node => !node.getParent());
+		return [rootNodes, changeNode];
 	}
 
-	// создаёт TreeNode из Line
+	// создаёт TreeNode из Line и возвращает изменённую строку если есть.
 	// осторожно, возвращает ВСЕ ноды в порядке линий
-	private static createFlatNodesFromLines(lines: Line[]): TreeNode[] {
+	private static createFlatNodesFromLines(lines: Line[]): [treeNodes: TreeNode[], changeNode: TreeNode | null] {
 		const nodes: TreeNode[] = [];
 		const stack: TreeNode[] = [];
 
@@ -62,13 +63,7 @@ export class ContextFactory {
 			nodes.push(node);
 			stack.push(node);
 		}
-
-		let parentChangeNode = changeNode?.getParent();
-		while (parentChangeNode) {
-			parentChangeNode.setModify(true);
-			parentChangeNode = parentChangeNode?.getParent();
-		}
-		return nodes;
+		return [nodes, changeNode];
 	}
 
 	static createLines(context: Context): Line[] {

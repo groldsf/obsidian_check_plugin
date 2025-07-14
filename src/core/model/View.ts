@@ -3,20 +3,19 @@ import { TreeNode } from "./TreeNode";
 export class View {
 	private treeNodes: TreeNode[];
 	// метка того, что Единичное изменение произошло в этой View
-	private modify: boolean;
+	private changeNode: TreeNode | null;
 
-	constructor(treeNodes: TreeNode[]) {
+	constructor(treeNodes: TreeNode[], changeNode: TreeNode | null) {
 		this.treeNodes = treeNodes;
-		// проверить ноды на modify
-		let isModify = false;
-		for (const treeNode of treeNodes) {
-			isModify = isModify || treeNode.isModify();
-		}
-		this.modify = isModify;
+		this.changeNode = changeNode;
 	}
 
-	isModify() {
-		return this.modify;
+	isModify(): boolean {
+		return this.changeNode ? true : false;
+	}
+
+	getChangeNode(): TreeNode | null {
+		return this.changeNode;
 	}
 
 	getTreeNodes(): TreeNode[] {
