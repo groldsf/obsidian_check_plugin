@@ -24,7 +24,7 @@ This provides flexibility in how you manage your task lists, allowing you to cus
 *   [Roadmap](roadmap.md)
 *   [Installation Guide](installation.md)
 *   [Contributing Guide](contributing.md)
-*   [Integration with Tasks plugin]("Integration with Tasks plugin.md")
+*   [Integration with Tasks plugin](Integration_with_Tasks_plugin.md)
 
 ### Acknowledgments
 *   [Obsidian](https://obsidian.md/) — a platform for creating and organizing notes.
@@ -49,7 +49,7 @@ This provides flexibility in how you manage your task lists, allowing you to cus
 *   [Планы (Roadmap)](roadmap.md)
 *   [Руководство по установке](installation.md)
 *   [Руководство для контрибьюторов](contributing.md)
-*   [Интеграция с Tasks plugin]("Integration with Tasks plugin.md")
+*   [Интеграция с Tasks plugin](Integration_with_Tasks_plugin.md)
 
 ### Благодарности
 *   [Obsidian](https://obsidian.md/) — платформа для создания и организации заметок.
