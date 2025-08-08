@@ -25,4 +25,16 @@ export abstract class BaseSettingComponent implements ISettingComponent {
   public setChangeListener(listener: () => void): void {
     this.onChangeCallback = listener;
   }
+
+	/**
+   * Creates a DocumentFragment from an HTML string.
+   * Useful for setting complex descriptions with HTML content.
+   * @param html The HTML string.
+   * @returns A DocumentFragment containing the parsed HTML.
+   */
+  protected createFragmentWithHTML(html: string): DocumentFragment {
+    return createFragment((documentFragment) => {
+      documentFragment.createDiv().innerHTML = html;
+    });
+  }
 }

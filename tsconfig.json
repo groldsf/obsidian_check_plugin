@@ -4,7 +4,7 @@
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",
-    "target": "ES6",
+    "target": "ES2018",
     "allowJs": true,
     "noImplicitAny": true,
     "moduleResolution": "node",
@@ -13,18 +13,22 @@
     "strictNullChecks": true,
     "lib": [
       "DOM",
-      "ES5",
-      "ES6",
-      "ES7"
+      "ES2018", 
+      "DOM.Iterable" 
     ],
     "esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+		"forceConsistentCasingInFileNames": true,
+		// "strict": true, // Включение этой опции активирует множество строгих проверок (включая noImplicitAny, strictNullChecks, и др.) - очень рекомендуется для новых проектов. Если сейчас вызовет много ошибок, можно добавлять постепенно.
     // "rootDir": "src", // Указываем, где исходный код
     // "outDir": "dist", // Куда компилировать
-    "resolveJsonModule": true  // Поддержка импорта JSON файлов
+    "resolveJsonModule": true,  // Поддержка импорта JSON файлов
+		"skipLibCheck": true,
   },
   "include": [
     "**/*.ts",
     "src/**/*.ts",  // Включаем только исходники из папки src
     "__tests__/**/*.ts"  // Включаем тесты из папки __tests__
-  ]
+  ],
+	"exclude": ["node_modules"],
 }

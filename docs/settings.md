@@ -51,6 +51,19 @@ These settings control when and how the synchronization logic runs.
     -   **Enabled:** Automatically synchronizes checkbox states when files are loaded/opened and immediately after plugin settings are applied. This ensures consistency but might have performance implications on very large vaults or files. *(Requires Obsidian restart or settings reload to take full effect)*.
     -   **Disabled (Default):** Synchronization only occurs when you *manually* change a checkbox's state within Obsidian. This is the default behavior to minimize potential performance impact.
 
+### File Scope & Filtering
+-	**File ignore Rules (.gitignore style)**
+	- This setting allows you to define which files and folders Checkbox Sync should process. If the list of patterns is empty, the plugin will operate on all markdown files in your vault.
+	- The filtering uses **.gitignore syntax** and is powered by the [`ignore`](https://github.com/kaelzhang/node-ignore) library.
+
+
+### Dev
+
+-   **Enable console log**
+    -   **Description:** Toggles detailed logging to the developer console. When enabled, the plugin will output more information about its operations, which can be helpful for troubleshooting or understanding its behavior.
+    -   **Enabled:** Debug logs are printed to the console.
+    -   **Disabled (Default):** Debug logs are suppressed.
+
 ### Actions and Status
 
 -   **Error Display:** An area below the settings displays any errors encountered, such as invalid JSON in the symbol configuration.
@@ -104,6 +117,19 @@ These settings control when and how the synchronization logic runs.
 -   **Включить автоматическую синхронизацию файлов**
     -   **Включено:** Автоматически синхронизирует состояния чекбоксов при загрузке/открытии файлов и сразу после применения настроек плагина. Это обеспечивает консистентность, но может влиять на производительность в очень больших хранилищах или файлах. *(Требует перезапуска Obsidian или перезагрузки настроек для полного вступления в силу)*.
     -   **Отключено (По умолчанию):** Синхронизация происходит только тогда, когда вы *вручную* изменяете состояние чекбокса в Obsidian. Это поведение по умолчанию для минимизации потенциального влияния на производительность.
+
+### File Scope & Filtering
+-   **Правила игнорирования файлов (стиль .gitignore)**   
+    - Этот параметр позволяет определить, какие файлы и папки должен обрабатывать Checkbox Sync. Если список шаблонов пуст, плагин будет обрабатывать все файлы Markdown в вашем хранилище.
+    - Фильтрация использует **синтаксис .gitignore** и работает на основе библиотеки [`ignore`](https://github.com/kaelzhang/node-ignore). 
+
+
+### Разработка / Отладка
+
+-   **Включить Отладочное Логирование (Enable console log)**
+    -   **Описание:** Переключает вывод подробных логов в консоль разработчика. Когда включено, плагин будет выводить больше информации о своих операциях, что может быть полезно для устранения неполадок или понимания его поведения.
+    -   **Включено:** Отладочные логи выводятся в консоль.
+    -   **Отключено (По умолчанию):** Отладочные логи не выводятся.
 
 ### Действия и Статус
 

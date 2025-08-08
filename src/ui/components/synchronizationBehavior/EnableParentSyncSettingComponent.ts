@@ -41,8 +41,9 @@ export class EnableParentSyncSettingComponent extends BaseSettingComponent {
   setValueInUi(value: any): void {
     if (this.toggleComponent) {
       this.toggleComponent.setValue(value as boolean);
-    }
-    throw new Error(`[${this.getSettingKey()}] Attempted to set value before component is rendered.`);
+    }else{
+			throw new Error(`[${this.getSettingKey()}] Attempted to set value before component is rendered.`);
+		}    
   }
 
   validate(): ValidationError | null {

@@ -4,6 +4,15 @@ nav_order: 3
 ---
 # Changelog
 
+## [1.2.0] - 2025-08-08
+### Added
+- Added Feature: **Logging Toggle:** Add a setting to enable/disable detailed logging for debugging purposes.
+- Added Feature **File/Folder Scope Filter:** Implement settings to include or exclude specific files or folders where the plugin should be active.
+- Added Feature: **Support Non-Checkbox Nodes:** Added support for list-item and plain text inside the checkbox tree
+- Added [Integration with Tasks plugin]("Integration with Tasks plugin.md")
+### Changed
+- Transition to tree structure
+
 ## [1.1.0] - 2025-05-05
 ### Added
 - Added Feature: Flexible Checkbox Symbol Configuration[#11](https://github.com/groldsf/obsidian_check_plugin/issues/11).

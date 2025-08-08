@@ -1,94 +1,89 @@
 import { Mutex } from "async-mutex";
 import { Editor, EditorChange, MarkdownFileInfo, MarkdownView, TFile, Vault } from "obsidian";
-import { CheckboxUtils } from "./checkboxUtils";
-import FileStateHolder from "./FileStateHolder";
+import TextSyncPipeline from "./TextSyncPipeline";
 
 export default class SyncController {
-  // private plugin: CheckboxSyncPlugin;//delete
-  private vault: Vault;
-  private checkboxUtils: CheckboxUtils;
-  private fileStateHolder: FileStateHolder;
+	private vault: Vault;
+	textSyncPipeline: TextSyncPipeline
 
-  private mutex: Mutex;
+	private mutex: Mutex;
 
-  constructor(vault: Vault, checkboxUtils: CheckboxUtils, fileStateHolder: FileStateHolder) {
-    // this.plugin = plugin;//delete
-    this.vault = vault;
-    this.checkboxUtils = checkboxUtils;
-    this.fileStateHolder = fileStateHolder;
-    this.mutex = new Mutex();
-  }
+	constructor(vault: Vault, textSyncPipeline: TextSyncPipeline) {
+		this.vault = vault;
+		this.textSyncPipeline = textSyncPipeline;
+		this.mutex = new Mutex();
+	}
 
-  async syncEditor(editor: Editor, info: MarkdownView | MarkdownFileInfo) {
-    if (!info.file) {
-      return;
-    }
-    await this.mutex.runExclusive(() => {
-      const file = info.file!;
-      console.log(`sync editor "${file.basename}" start.`);
-      const text = editor.getValue();
-      const textBefore = this.fileStateHolder.get(file);
+	async syncEditor(editor: Editor, info: MarkdownView | MarkdownFileInfo) {
+		if (!info.file) {
+			return;
+		}
+		await this.mutex.runExclusive(async () => {
+			const currentText = editor.getValue();
+			const resultingText = this.textSyncPipeline.applySyncLogic(currentText, info.file!.path);
+			if (resultingText !== currentText) {
+				await this.editEditor(editor, info as MarkdownView, currentText, resultingText);
+			}
+		});
+	}
 
-      let newText = this.checkboxUtils.syncText(text, textBefore);
-      if (newText === text) {
-        this.fileStateHolder.set(file, newText);
-        console.log(`sync editor "${file.basename}" stop. new text equals old text.`);
-        return;
-      }
+	async syncFile(file: TFile | null) {
+		if (!(file instanceof TFile) || file.extension !== "md") {
+			return;
+		}
+		await this.mutex.runExclusive(async () => {
+			await this.vault.process(file, (currentText) => {
+				return this.textSyncPipeline.applySyncLogic(currentText, file.path);
+			});
+		});
+	}
 
-      this.fileStateHolder.set(file, newText);
-      this.editEditor(editor, text, newText);
+	private async editEditor(editor: Editor, info: MarkdownView, oldText: string, newText: string) {
+		const cursor = editor.getCursor();
 
-      console.log(`syncEditor "${file.basename}" stop.`);
-    });
-  }
+		const newLines = newText.split("\n");
+		const oldLines = oldText.split("\n");
 
-  async syncFile(file: TFile | null) {
-    if (!(file instanceof TFile) || file.extension !== "md") {
-      return;
-    }
-    await this.mutex.runExclusive(async () => {
-      console.log(`sync file "${file.basename}" start.`);
-      const newText = await this.vault.process(file, (text) => {
-        let textBefore = this.fileStateHolder.get(file);
-        let newText = this.checkboxUtils.syncText(text, textBefore);
-        return newText;
-      });
-      this.fileStateHolder.set(file, newText);
-      console.log(`sync file "${file.basename}" stop.`);
-    });
-  }
+		const diffIndexes = this.findDifferentLineIndexes(oldLines, newLines);
 
-  private editEditor(editor: Editor, oldText: string, newText: string) {
-    const cursor = editor.getCursor();
+		const changes: EditorChange[] = [];
 
-    const newLines = newText.split("\n");
-    const oldLines = oldText.split("\n");
+		for (let ind of diffIndexes) {
+			changes.push({
+				from: { line: ind, ch: 0 },
+				to: { line: ind, ch: oldLines[ind].length },
+				text: newLines[ind]
+			});
+		}
+		editor.transaction({
+			changes: changes
+		});
 
-    const diffIndexes = this.checkboxUtils.findDifferentLineIndexes(oldLines, newLines);
+		editor.setCursor(cursor);
 
-    const changes: EditorChange[] = [];
+		const lastDifferentLineIndex = diffIndexes.length > 0 ? diffIndexes[0] : -1;
+		if (lastDifferentLineIndex != -1) {
+			editor.scrollIntoView({
+				from: { line: lastDifferentLineIndex, ch: 0 },
+				to: { line: lastDifferentLineIndex, ch: 0 }
+			});
+		}
+		await info.save();
+	}
 
-    for (let ind of diffIndexes) {
-      changes.push({
-        from: { line: ind, ch: 0 },
-        to: { line: ind, ch: oldLines[ind].length },
-        text: newLines[ind]
-      });
-    }
-    editor.transaction({
-      changes: changes
-    });
+	private findDifferentLineIndexes(lines1: string[], lines2: string[]): number[] {
+		if (lines1.length !== lines2.length) {
+			throw new Error("the length of the lines must be equal");
+		}
 
-    editor.setCursor(cursor);
-
-    const lastDifferentLineIndex = diffIndexes.length > 0 ? diffIndexes[0] : -1;
-    if (lastDifferentLineIndex != -1) {
-      editor.scrollIntoView({
-        from: { line: lastDifferentLineIndex, ch: 0 },
-        to: { line: lastDifferentLineIndex, ch: 0 }
-      });
-    }
-  }
+		const length = lines1.length;
+		const result: number[] = [];
+		for (let i = 0; i < length; i++) {
+			if (lines1[i] !== lines2[i]) {
+				result.push(i);
+			}
+		}
+		return result;
+	}
 
 }

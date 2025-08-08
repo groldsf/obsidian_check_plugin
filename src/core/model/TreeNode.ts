@@ -1,0 +1,63 @@
+import { Line } from "./Line";
+import { CheckboxLine } from "./line/CheckboxLine";
+
+export class TreeNode {
+	private parent?: TreeNode;
+	private childrens: TreeNode[] = [];
+
+	private line: Line;
+	// метка того, что Единичное изменение произошло в этой ноде или дочерних нодах
+	private modify = false;
+
+	constructor(line: Line) {
+		this.line = line;
+		if (line instanceof CheckboxLine && line.isChange()) {
+			this.modify = true;
+		}
+	}
+
+	getLine(): Line {
+		return this.line;
+	}
+
+	isModify(): boolean {
+		return this.modify;
+	}
+
+	setModify(isModify:boolean){
+		this.modify = isModify;
+	}
+
+	private setParent(parent: TreeNode) {
+		this.parent = parent;
+	}
+
+	getParent(): TreeNode | undefined {
+		return this.parent;
+	}
+
+	addChildren(children: TreeNode) {
+		this.childrens.push(children);
+		children.setParent(this);
+	}
+
+	hasChildren(): boolean {
+		return this.childrens.length > 0;
+	}
+
+	getChildrenNodes(): TreeNode[] {
+		return [...this.childrens];
+	}
+
+	toResultText(): string {
+		const parts: string[] = [];
+
+		parts.push(this.line.toResultText());
+
+		for (const children of this.childrens) {
+			parts.push(children.toResultText());
+		}
+		
+		return parts.join("\n");
+	}
+}
