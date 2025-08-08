@@ -1,6 +1,6 @@
 {
   "name": "checkbox-sync",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Automatically checks the parent checkbox if all child checkboxes are completed, and unchecks it otherwise",
   "main": "main.js",
   "scripts": {
