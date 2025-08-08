@@ -12,8 +12,6 @@ This document outlines the development status and future plans for the Checkbox 
 
 *This section lists the main features and technical work currently planned or in progress for the next release.*
 
-*   [Feature] **File/Folder Scope Filter:** Implement settings to include or exclude specific files or folders where the plugin should be active.
-*   [Feature] **Logging Toggle:** Add a setting to enable/disable detailed logging for debugging purposes.
 *   [Feature] **Configurable Checkbox Character (Auto-Update):** Add a setting to define which character is used to mark checkboxes when automatically updated by the plugin.
 
 ## Future Ideas / Backlog
