@@ -52,9 +52,11 @@ export class CheckboxLine extends AbstractLine {
   }
 
 
-  private static getNewCheckboxLineFromTasksApi(api: any, checkboxLine: CheckboxLine, targetState: CheckboxState): CheckboxLine|null {
+  private static getNewCheckboxLineFromTasksApi(api: any, checkboxLine: CheckboxLine, targetState: CheckboxState): CheckboxLine | null {
     let line: CheckboxLine | null = checkboxLine;
-    const startChar = checkboxLine.checkChar;
+    const seenChars = new Set<string>();
+    seenChars.add(checkboxLine.checkChar);
+
     while (true) {
       const textLine = line.toResultText();
       const newTextLine = api.executeToggleTaskDoneCommand(textLine, null);
@@ -62,12 +64,14 @@ export class CheckboxLine extends AbstractLine {
       if (!newBox) {
         return null;
       }
-      if (newBox.checkboxState === targetState){
+      if (newBox.checkboxState === targetState) {
         return newBox;
       }
-      if (newBox.checkChar === startChar){
+      if (seenChars.has(newBox.checkChar)) {
         return null;
       }
+      
+      seenChars.add(newBox.checkChar);
       line = newBox;
     }
   }
@@ -77,7 +81,7 @@ export class CheckboxLine extends AbstractLine {
     if (taskPlugin) {
       const api = taskPlugin.apiV1;
       const res = CheckboxLine.getNewCheckboxLineFromTasksApi(api, this, state);
-      if (res !== null){
+      if (res !== null) {
         this.listText = res.listText;
       }
     }
