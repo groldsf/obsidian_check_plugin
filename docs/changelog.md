@@ -7,7 +7,9 @@ nav_order: 3
 ## [1.2.0] - 2025-XX-XX
 ### Added
 - Added Feature: **Logging Toggle:** Add a setting to enable/disable detailed logging for debugging purposes.
-- added Feature **File/Folder Scope Filter:** Implement settings to include or exclude specific files or folders where the plugin should be active.
+- Added Feature **File/Folder Scope Filter:** Implement settings to include or exclude specific files or folders where the plugin should be active.
+- Added Feature: **Support Non-Checkbox Nodes:** Added support for list-item and plain text inside the checkbox tree
+- Added [Integration with Tasks plugin]("Integration with Tasks plugin.md")
 
 ## [1.1.0] - 2025-05-05
 ### Added
