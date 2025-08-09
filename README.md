@@ -26,7 +26,7 @@ It automatically updates parent checkboxes based on their children's state, and 
 *   Respects list indentation for nested hierarchies.
 *   Flexible checkbox symbol interpretation (define checked/unchecked/ignored symbols).
 *   Option to disable automatic sync on file open.
-*		File Ignore Rules.
+*   File Ignore Rules.
 
 ## Quick Links
 

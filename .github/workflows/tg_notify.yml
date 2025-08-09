@@ -11,19 +11,57 @@ on:
     types: [submitted]
 
 jobs:
-  build:
-    name: Build
+  notify_telegram: # Переименовал job для ясности
+    name: Notify Telegram
     runs-on: ubuntu-latest
     steps:
-      - name: send telegram message on push
+      - name: Prepare notification message
+        id: prepare_message # Добавляем ID шагу, чтобы ссылаться на его output
+        run: |
+          TITLE="${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}"
+          BODY="${{ github.event.issue.body || github.event.comment.body || github.event.review.body || '' }}" # Добавил github.event.review.body для pull_request_review
+          URL="${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }}"
+          
+          # Формируем полное сообщение
+          FULL_MESSAGE="Репозиторий: ${{ github.repository }}
+          Тип: ${{ github.event_name }}
+          Действие: ${{ github.event.action }}
+          Заголовок: ${TITLE}
+          ${BODY}
+          Подробнее: ${URL}"
+          
+          # Формируем короткое сообщение
+          SHORT_MESSAGE="Репозиторий: ${{ github.repository }}
+          Тип: ${{ github.event_name }}
+          Действие: ${{ github.event.action }}
+          Заголовок: ${TITLE}
+          Произошло обновление. Подробнее: ${URL}"
+          
+          # Проверяем длину полного сообщения (приблизительно, т.к. точный лимит зависит от кодировки и спецсимволов, но 3800 должно быть безопасно)
+          # Лимит Telegram 4096. Оставляем запас.
+          MAX_LENGTH=3800 
+          
+          if [ ${#FULL_MESSAGE} -gt $MAX_LENGTH ]; then
+            echo "Сообщение слишком длинное, отправляем короткую версию."
+            # Используем echo -e для корректной обработки многострочности и сохраняем в переменную окружения для следующего шага
+            echo "TELEGRAM_MESSAGE<<EOF" >> $GITHUB_ENV
+            echo -e "${SHORT_MESSAGE}" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          else
+            echo "TELEGRAM_MESSAGE<<EOF" >> $GITHUB_ENV
+            echo -e "${FULL_MESSAGE}" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          fi
+        # Важно: нужно корректно обрабатывать пустые значения, если некоторых полей нет в событии
+        env:
+          TITLE: ${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий к событию' }}
+          BODY: ${{ github.event.issue.body || github.event.comment.body || github.event.review.body || '' }} # Если комментарий пуст или это не событие комментария
+          URL: ${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }}
+
+      - name: Send Telegram Message
         uses: appleboy/telegram-action@master
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          message: |            
-            Repository: ${{ github.repository }}
-            Type: ${{ github.event_name }}
-            Action: ${{ github.event.action }}
-            Titile: ${{ github.event.issue.title || github.event.pull_request.title || 'Комментарий' }}
-            ${{github.event.comment.body || ''}}
-            See ${{ github.event.issue.html_url || github.event.pull_request.html_url || github.event.comment.html_url || github.event.review.html_url }}
+          message: ${{ env.TELEGRAM_MESSAGE }} # Используем подготовленное сообщение
+          format: markdown # Или html, если хотите использовать разметку в сообщениях
